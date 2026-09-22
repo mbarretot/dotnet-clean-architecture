@@ -1,0 +1,25 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.4.6">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <!-- Explicitly false: AspireUseCliBundle ties `dotnet build` itself to resolving the local
+         Aspire CLI's bundled DCP/dashboard layout, which is brittle across machines/CI.
+         Disabling it makes `dotnet build` deterministic via standard NuGet-resolved DCP
+         packages; `aspire run`/`aspire start` (when Docker is available) are unaffected. -->
+    <AspireUseCliBundle>false</AspireUseCliBundle>
+    <UserSecretsId>ceec52ad-a74a-4a3a-87ef-40e254551abe</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.AppHost" />
+    <PackageReference Include="Aspire.Hosting.PostgreSQL" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CleanArchitecture.Presentation\CleanArchitecture.Presentation.csproj" />
+  </ItemGroup>
+
+</Project>
