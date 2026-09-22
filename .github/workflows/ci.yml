@@ -1,0 +1,131 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  # Lets cd.yml call this workflow as its build/test gate instead of duplicating it.
+  workflow_call:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+jobs:
+  build-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          # Pinned to the exact SDK global.json requires (rollForward: latestFeature makes this
+          # a floor, not a ceiling — keeping CI and global.json in lockstep avoids drift).
+          dotnet-version: "10.0.302"
+          cache: true
+          # No packages.lock.json in this repo (Central Package Management via
+          # Directory.Packages.props instead), so the cache key is derived from the CPM file
+          # and every csproj rather than setup-dotnet's default lock-file lookup.
+          cache-dependency-path: |
+            Directory.Packages.props
+            **/*.csproj
+
+      - name: Restore
+        run: dotnet restore CleanArchitecture.slnx
+
+      - name: Build (warnings as errors)
+        run: dotnet build CleanArchitecture.slnx --no-restore -warnaserror
+
+      - name: Test
+        run: dotnet test CleanArchitecture.slnx --no-build | tee test-output.log
+        # NOTE: this repo's test projects run on Microsoft.Testing.Platform (MTP) —
+        # global.json sets "test.runner": "Microsoft.Testing.Platform" and every test csproj
+        # has <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>. The
+        # classic VSTest `--logger "trx;LogFileName=..."` syntax requested for this step does
+        # NOT work against MTP-mode projects: verified by hand here, it makes `dotnet test`
+        # report "No se ejecutaron pruebas" / exit code 5 (no tests ran) for every project,
+        # even though the same solution runs all 121 tests cleanly without that flag. Emitting
+        # a real .trx also requires the Microsoft.Testing.Extensions.TrxReport(.Xunit) package
+        # referenced by each test project, which none of them currently reference — adding it
+        # is a test-project change outside this workflow-only change. Uploading the full
+        # console log below is the accurate substitute until that package is added.
+
+      - name: Upload test results log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-output.log
+          retention-days: 14
+
+      - name: Verify formatting
+        run: dotnet format CleanArchitecture.slnx --verify-no-changes
+
+  docker-build-check:
+    name: Docker Build Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Presentation image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: src/CleanArchitecture.Presentation/Dockerfile
+          push: false
+          tags: cleanarchitecture-presentation:ci-check
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  terraform-lint:
+    name: Terraform Lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: terraform fmt (check only)
+        run: terraform fmt -check -recursive
+
+      - name: terraform init (no backend)
+        run: terraform init -backend=false
+
+      - name: terraform validate
+        run: terraform validate
+
+  # Single required-status-check-friendly job: point branch protection at this instead of all
+  # three job names individually.
+  ci-status:
+    name: CI
+    if: always()
+    needs: [build-test, docker-build-check, terraform-lint]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check job results
+        run: |
+          if [ "${{ needs.build-test.result }}" != "success" ] || \
+             [ "${{ needs.docker-build-check.result }}" != "success" ] || \
+             [ "${{ needs.terraform-lint.result }}" != "success" ]; then
+            echo "One or more required jobs did not succeed."
+            exit 1
+          fi

@@ -1,0 +1,65 @@
+name: CD
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  # Reuses ci.yml's full job graph (build-test, docker-build-check, terraform-lint, ci-status)
+  # as the publish gate via workflow_call, instead of duplicating the build/test steps here or
+  # wiring a workflow_run trigger. workflow_call is the simpler, more standard choice for this
+  # same-repo, single-source-of-truth case: it runs synchronously in the same event (push to
+  # main), publish jobs can `needs:` it directly, and it avoids workflow_run's extra
+  # indirection (a separate run watching ci.yml, re-checking out the right SHA, and only firing
+  # after ci.yml finishes on the default branch).
+  ci:
+    name: CI Gate
+    uses: ./.github/workflows/ci.yml
+
+  docker-publish:
+    name: Publish Docker Image
+    needs: ci
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          # No extra secret to configure: GITHUB_TOKEN is issued automatically for every
+          # workflow run and is granted `packages: write` above.
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute image tags/labels
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          # github.repository is already "<owner>/<repo>"; metadata-action lowercases it for
+          # GHCR, which requires an all-lowercase image path.
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=sha,format=short
+            type=raw,value=latest
+
+      - name: Build and push Presentation image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: src/CleanArchitecture.Presentation/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
