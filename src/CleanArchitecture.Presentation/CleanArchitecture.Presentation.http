@@ -1,0 +1,49 @@
+@baseUrl = http://localhost:5236
+@productId = 00000000-0000-0000-0000-000000000000
+
+### Create a product
+POST {{baseUrl}}/api/products
+Content-Type: application/json
+
+{
+  "name": "Mechanical Keyboard",
+  "description": "Hot-swappable mechanical keyboard with brown switches.",
+  "price": 89.99,
+  "currency": "USD",
+  "sku": "KB-100"
+}
+
+### Create a product — validation error (blank name)
+POST {{baseUrl}}/api/products
+Content-Type: application/json
+
+{
+  "name": "",
+  "description": "Invalid because the name is blank.",
+  "price": 10,
+  "currency": "USD",
+  "sku": "KB-101"
+}
+
+### List products (first page)
+GET {{baseUrl}}/api/products?pageNumber=1&pageSize=20
+
+### Get a product by id
+GET {{baseUrl}}/api/products/{{productId}}
+
+### Get a product by id — not found
+GET {{baseUrl}}/api/products/11111111-1111-1111-1111-111111111111
+
+### Update a product
+PUT {{baseUrl}}/api/products/{{productId}}
+Content-Type: application/json
+
+{
+  "name": "Mechanical Keyboard (Tenkeyless)",
+  "description": "Hot-swappable TKL mechanical keyboard with brown switches.",
+  "price": 79.99,
+  "currency": "USD"
+}
+
+### Delete (deactivate) a product
+DELETE {{baseUrl}}/api/products/{{productId}}
