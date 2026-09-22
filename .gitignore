@@ -1,0 +1,37 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+artifacts/
+
+# Test results
+TestResults/
+*.trx
+coverage/
+*.coverage
+*.coveragexml
+
+# IDE
+.vs/
+.vscode/
+*.swp
+*.swn
+.idea/
+*.DotSettings.user
+
+# macOS
+.DS_Store
+
+# Local tooling caches (not part of the project)
+.atl/
+.codegraph/
+
+# Terraform (future phases)
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+crash.*.log

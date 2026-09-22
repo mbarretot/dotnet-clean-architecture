@@ -1,0 +1,18 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CleanArchitecture.AppHost/CleanArchitecture.AppHost.csproj" />
+    <Project Path="src/CleanArchitecture.Application/CleanArchitecture.Application.csproj" />
+    <Project Path="src/CleanArchitecture.Domain/CleanArchitecture.Domain.csproj" />
+    <Project Path="src/CleanArchitecture.Infrastructure/CleanArchitecture.Infrastructure.csproj" />
+    <Project Path="src/CleanArchitecture.Presentation/CleanArchitecture.Presentation.csproj" />
+    <Project Path="src/CleanArchitecture.ServiceDefaults/CleanArchitecture.ServiceDefaults.csproj" />
+    <Project Path="src/CleanArchitecture.SharedKernel/CleanArchitecture.SharedKernel.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CleanArchitecture.Application.UnitTests/CleanArchitecture.Application.UnitTests.csproj" />
+    <Project Path="tests/CleanArchitecture.ArchitectureTests/CleanArchitecture.ArchitectureTests.csproj" />
+    <Project Path="tests/CleanArchitecture.Infrastructure.UnitTests/CleanArchitecture.Infrastructure.UnitTests.csproj" />
+    <Project Path="tests/CleanArchitecture.Presentation.UnitTests/CleanArchitecture.Presentation.UnitTests.csproj" />
+    <Project Path="tests/CleanArchitecture.SharedKernel.UnitTests/CleanArchitecture.SharedKernel.UnitTests.csproj" />
+  </Folder>
+</Solution>
