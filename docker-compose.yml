@@ -1,0 +1,41 @@
+# Standalone "just Docker, no Aspire" local option.
+# For the Aspire-orchestrated alternative (dashboard, OTel out of the box), use `aspire run`
+# from the repository root instead (requires Docker for the Postgres container either way).
+#
+# Usage:
+#   docker compose up --build
+#   API:     http://localhost:8080
+#   Scalar:  http://localhost:8080/scalar (Development environment only)
+
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: cleanarchitecture
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d cleanarchitecture"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: src/CleanArchitecture.Presentation/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Database: "Host=postgres;Port=5432;Database=cleanarchitecture;Username=postgres;Password=postgres"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres-data:

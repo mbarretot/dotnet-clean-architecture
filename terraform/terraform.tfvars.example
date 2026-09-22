@@ -1,0 +1,14 @@
+# Copy to terraform.tfvars (gitignored) and fill in real values, or pass equivalent
+# -var flags / TF_VAR_* environment variables instead. Never commit terraform.tfvars.
+
+project_name     = "cleanarch"
+environment_name = "dev"
+location         = "westeurope"
+
+# Build src/CleanArchitecture.Presentation/Dockerfile and push it to a registry
+# the Container App Environment can pull from before running `terraform apply`.
+container_image = "myregistry.azurecr.io/cleanarchitecture-api:1.0.0"
+
+postgres_admin_login = "psqladmin"
+# Prefer TF_VAR_postgres_admin_password over writing the password here.
+postgres_admin_password = "REPLACE_ME_WITH_A_STRONG_PASSWORD"
