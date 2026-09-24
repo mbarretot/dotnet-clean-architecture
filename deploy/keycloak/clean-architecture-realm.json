@@ -57,24 +57,33 @@
         "include.in.token.scope": "true",
         "display.on.consent.screen": "false"
       }
+    },
+    {
+      "name": "orders:write",
+      "description": "Place and cancel your own orders.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      }
     }
   ],
   "clients": [
     {
       "clientId": "clean-architecture-service",
-      "description": "DEV ONLY. Machine client (client_credentials) with products:write: can read and write.",
+      "description": "DEV ONLY. Machine client (client_credentials) with products:write and orders:write: can read and write.",
       "enabled": true,
       "publicClient": false,
       "secret": "dev-only-service-secret",
       "serviceAccountsEnabled": true,
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false,
-      "defaultClientScopes": ["basic", "clean-architecture-api-audience", "products:write"],
+      "defaultClientScopes": ["basic", "clean-architecture-api-audience", "products:write", "orders:write"],
       "optionalClientScopes": []
     },
     {
       "clientId": "clean-architecture-reader",
-      "description": "DEV ONLY. Machine client (client_credentials) without products:write: reads succeed, writes return 403.",
+      "description": "DEV ONLY. Machine client (client_credentials) without write scopes: reads succeed, writes return 403.",
       "enabled": true,
       "publicClient": false,
       "secret": "dev-only-reader-secret",
@@ -86,7 +95,7 @@
     },
     {
       "clientId": "scalar",
-      "description": "DEV ONLY. Public client for Scalar: Authorization Code + PKCE, products:write on request.",
+      "description": "DEV ONLY. Public client for Scalar: Authorization Code + PKCE, products:write and orders:write on request.",
       "enabled": true,
       "publicClient": true,
       "standardFlowEnabled": true,
@@ -97,7 +106,7 @@
         "pkce.code.challenge.method": "S256"
       },
       "defaultClientScopes": ["basic", "clean-architecture-api-audience"],
-      "optionalClientScopes": ["products:write"]
+      "optionalClientScopes": ["products:write", "orders:write"]
     }
   ],
   "users": [

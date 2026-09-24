@@ -90,5 +90,8 @@ public sealed class AnonymousEndpointConventionTests : IAsyncLifetime
 
         protectedRoutes.ShouldContain("/api/products");
         protectedRoutes.ShouldContain("/api/products/{id:guid}");
+        protectedRoutes.ShouldContain("/api/orders");
+        protectedRoutes.ShouldContain("/api/orders/{id:guid}");
+        protectedRoutes.ShouldContain("/api/orders/{id:guid}/cancel");
     }
 }

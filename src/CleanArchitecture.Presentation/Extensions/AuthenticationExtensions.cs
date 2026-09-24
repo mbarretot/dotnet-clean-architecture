@@ -29,7 +29,10 @@ public static class AuthenticationExtensions
             .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build())
             .AddPolicy(AuthorizationPolicies.ProductsWrite, policy => policy
                 .RequireAuthenticatedUser()
-                .AddRequirements(new ScopeRequirement(Scopes.ProductsWrite)));
+                .AddRequirements(new ScopeRequirement(Scopes.ProductsWrite)))
+            .AddPolicy(AuthorizationPolicies.OrdersWrite, policy => policy
+                .RequireAuthenticatedUser()
+                .AddRequirements(new ScopeRequirement(Scopes.OrdersWrite)));
 
         return services;
     }

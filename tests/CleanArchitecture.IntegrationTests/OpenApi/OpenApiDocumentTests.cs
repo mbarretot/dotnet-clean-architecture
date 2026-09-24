@@ -14,6 +14,8 @@ public sealed class OpenApiDocumentTests(ApiFactory factory) : IntegrationTest(f
     {
         { "/api/products", "get" },
         { "/api/products/{id}", "get" },
+        { "/api/orders", "get" },
+        { "/api/orders/{id}", "get" },
     };
 
     public static TheoryData<string, string> WriteOperations => new()
@@ -21,6 +23,8 @@ public sealed class OpenApiDocumentTests(ApiFactory factory) : IntegrationTest(f
         { "/api/products", "post" },
         { "/api/products/{id}", "put" },
         { "/api/products/{id}", "delete" },
+        { "/api/orders", "post" },
+        { "/api/orders/{id}/cancel", "post" },
     };
 
     [Fact]

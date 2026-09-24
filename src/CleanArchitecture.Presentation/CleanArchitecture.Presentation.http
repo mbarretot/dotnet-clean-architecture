@@ -1,6 +1,8 @@
 # 5236 = `dotnet run` / Aspire; use http://localhost:8080 for Docker Compose.
 @baseUrl = http://localhost:5236
 @productId = 00000000-0000-0000-0000-000000000000
+# Filled in by the "Place an order" request below.
+@orderId = {{placeOrder.response.body.$}}
 # Keycloak: http:// under Docker Compose, https:// (dev certificate) under Aspire.
 @keycloakUrl = http://localhost:8180/realms/clean-architecture
 
@@ -9,7 +11,7 @@
 @token = {{tokenRequest.response.body.access_token}}
 
 # Token source B (API running alone): mint a token and paste it instead of the line above:
-#   dotnet user-jwts create --project src/CleanArchitecture.Presentation --scope products:write
+#   dotnet user-jwts create --project src/CleanArchitecture.Presentation --scope products:write --scope orders:write
 # @token = paste-token-here
 
 ### Get a token from Keycloak (client credentials; DEV-ONLY secret from deploy/keycloak)
@@ -75,3 +77,36 @@ Authorization: Bearer {{token}}
 
 ### List products — no token (401 Unauthorized)
 GET {{baseUrl}}/api/products
+
+### Place an order for the caller (orders:write) — snapshots each product's name and price
+# @name placeOrder
+POST {{baseUrl}}/api/orders
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "lines": [
+    { "productId": "{{productId}}", "quantity": 2 }
+  ]
+}
+
+### Place an order — validation error (no lines)
+POST {{baseUrl}}/api/orders
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "lines": []
+}
+
+### List my orders (newest first)
+GET {{baseUrl}}/api/orders?pageNumber=1&pageSize=20
+Authorization: Bearer {{token}}
+
+### Get one of my orders by id — another customer's order returns 404
+GET {{baseUrl}}/api/orders/{{orderId}}
+Authorization: Bearer {{token}}
+
+### Cancel one of my orders — a second cancel returns 409
+POST {{baseUrl}}/api/orders/{{orderId}}/cancel
+Authorization: Bearer {{token}}

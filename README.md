@@ -11,7 +11,7 @@
 [![Aspire](https://img.shields.io/badge/.NET_Aspire-13.4-7B2CBF?style=flat-square&logo=dotnet&logoColor=white)](https://learn.microsoft.com/dotnet/aspire/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16%20%7C%2017-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-enabled-F5A800?style=flat-square&logo=opentelemetry&logoColor=black)](https://opentelemetry.io/)
-[![Tests](https://img.shields.io/badge/tests-224_passing-2EA44F?style=flat-square)](#quality-gates)
+[![Tests](https://img.shields.io/badge/tests-296_passing-2EA44F?style=flat-square)](#quality-gates)
 [![License: MIT](https://img.shields.io/badge/license-MIT-22C55E?style=flat-square)](LICENSE)
 
 [Architecture](#architecture) · [Request flow](#request-flow) · [Run](#run-it) · [Auth](#authentication) · [Project map](#project-map) · [Delivery](#delivery) · [Decisions](docs/adr/README.md)
@@ -63,10 +63,12 @@ flowchart TB
 | Project | Owns | May depend on |
 |---|---|---|
 | `SharedKernel` | Results, base entities, mediator primitives | — |
-| `Domain` | Business rules and product aggregate | `SharedKernel` |
+| `Domain` | Business rules, product and order aggregates | `SharedKernel` |
 | `Application` | Commands, queries, handlers, validation | `Domain`, `SharedKernel` |
 | `Infrastructure` | Persistence and external concerns | `Application`, `Domain`, `SharedKernel` |
 | `Presentation` | HTTP composition root and endpoints | Application layers + `ServiceDefaults` |
+
+Aggregates reference each other by id only: an order line stores the `ProductId` plus a name/price snapshot taken at order time, so a product change never rewrites an order (pinned by an architecture test).
 
 The dependency rules are executable: `CleanArchitecture.ArchitectureTests` rejects invalid layer references and convention drift.
 
@@ -159,6 +161,10 @@ dotnet ef database update \
 | `POST` | `/api/products` | Create a product | `products:write` scope |
 | `PUT` | `/api/products/{id}` | Update a product | `products:write` scope |
 | `DELETE` | `/api/products/{id}` | Soft-delete a product (then reads as `404`) | `products:write` scope |
+| `GET` | `/api/orders` | List my orders with pagination, newest first | Authenticated user |
+| `GET` | `/api/orders/{id}` | Get one of my orders (someone else's reads as `404`) | Authenticated user |
+| `POST` | `/api/orders` | Place an order, snapshotting product names and prices | `orders:write` scope |
+| `POST` | `/api/orders/{id}/cancel` | Cancel one of my orders (again: `409`) | `orders:write` scope |
 
 ## 🔐 Authentication
 
@@ -166,7 +172,7 @@ Provider-agnostic JWT bearer tokens (`Microsoft.AspNetCore.Authentication.JwtBea
 
 **Secure by default** — an authorization fallback policy requires an authenticated user on every endpoint that declares nothing, so a new endpoint is never accidentally public. Public routes are opt-in via `AllowAnonymous()`: the health probes (`/health`, `/alive`), the OpenAPI document, and Scalar (Development only). A convention test pins that allow-list, and the OpenAPI document declares `401` (plus `403` for scoped operations) on every protected operation.
 
-- Write endpoints require a `scope` claim containing `products:write` (space-delimited or one claim per scope).
+- Write endpoints require a `scope` claim containing `products:write` or `orders:write` (space-delimited or one claim per scope).
 - Inbound claim mapping is disabled, so `sub` is the audited user id.
 - `401` and `403` are RFC 9457 `application/problem+json` responses like every other error; `401` keeps the `WWW-Authenticate` challenge.
 
@@ -184,9 +190,9 @@ Both setups start Keycloak on port `8180` and import the realm-as-code in [`depl
 
 | Client | Grant | Proves |
 |---|---|---|
-| `clean-architecture-service` / `dev-only-service-secret` | Client credentials, `products:write` by default | Reads and writes succeed (`201`/`200`) |
+| `clean-architecture-service` / `dev-only-service-secret` | Client credentials, `products:write` + `orders:write` by default | Reads and writes succeed (`201`/`200`) |
 | `clean-architecture-reader` / `dev-only-reader-secret` | Client credentials, no scope | Reads succeed, writes return `403` |
-| `scalar` (public) + user `alice` / `alice` | Authorization Code + PKCE, `products:write` optional | Interactive sign-in from Scalar |
+| `scalar` (public) + user `alice` / `alice` | Authorization Code + PKCE, `products:write` / `orders:write` optional | Interactive sign-in from Scalar |
 
 ```bash
 TOKEN=$(curl -s http://localhost:8180/realms/clean-architecture/protocol/openid-connect/token \
@@ -205,7 +211,7 @@ curl -i http://localhost:8080/api/products -H "Authorization: Bearer $TOKEN"
 Running just `dotnet run --project src/CleanArchitecture.Presentation` needs no identity provider. Mint a token with the built-in tool (it stores the signing key in user secrets and writes the issuer/audience to `appsettings.Development.json`):
 
 ```bash
-dotnet user-jwts create --project src/CleanArchitecture.Presentation --scope products:write
+dotnet user-jwts create --project src/CleanArchitecture.Presentation --scope products:write --scope orders:write
 ```
 
 Omit `--scope` for a read-only token.
@@ -225,7 +231,7 @@ Point the API at your identity provider through configuration (environment varia
 ```text
 src/
 ├── CleanArchitecture.SharedKernel      # Results, entities, mediator
-├── CleanArchitecture.Domain            # Product aggregate and domain rules
+├── CleanArchitecture.Domain            # Product and Order aggregates, domain rules
 ├── CleanArchitecture.Application       # Use cases and pipeline behaviors
 ├── CleanArchitecture.Infrastructure    # EF Core, PostgreSQL, repositories
 ├── CleanArchitecture.Presentation      # Minimal API, OpenAPI, Scalar
@@ -258,7 +264,7 @@ dotnet tool restore && dotnet test CleanArchitecture.slnx --coverage --coverage-
 | Gate | Coverage |
 |---|---|
 | Build | Nullable enabled, analyzers, deterministic output, warnings as errors |
-| Tests | **224 tests** across six projects |
+| Tests | **296 tests** across six projects |
 | Architecture | Layer, handler, repository, command/query, and mediator conventions |
 | CI | Build, test, formatting, Docker build, Terraform format + validation |
 | Supply chain | Vulnerable NuGet package gate (incl. transitive), CodeQL (C# + workflows), weekly grouped Dependabot updates |

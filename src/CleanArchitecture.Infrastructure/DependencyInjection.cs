@@ -1,4 +1,5 @@
 using CleanArchitecture.Application.Abstractions;
+using CleanArchitecture.Domain.Orders;
 using CleanArchitecture.Domain.Products;
 using CleanArchitecture.Infrastructure.Identity;
 using CleanArchitecture.Infrastructure.Persistence;
@@ -46,6 +47,7 @@ public static class DependencyInjection
             .AddDbContextCheck<ApplicationDbContext>(DatabaseHealthCheckName, tags: [ReadinessTag]);
 
         services.AddScoped<IProductRepository, ProductRepository>();
+        services.AddScoped<IOrderRepository, OrderRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
 
