@@ -11,7 +11,7 @@
 [![Aspire](https://img.shields.io/badge/.NET_Aspire-13.4-7B2CBF?style=flat-square&logo=dotnet&logoColor=white)](https://learn.microsoft.com/dotnet/aspire/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16%20%7C%2017-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-enabled-F5A800?style=flat-square&logo=opentelemetry&logoColor=black)](https://opentelemetry.io/)
-[![Tests](https://img.shields.io/badge/tests-207_passing-2EA44F?style=flat-square)](#quality-gates)
+[![Tests](https://img.shields.io/badge/tests-210_passing-2EA44F?style=flat-square)](#quality-gates)
 [![License: MIT](https://img.shields.io/badge/license-MIT-22C55E?style=flat-square)](LICENSE)
 
 [Architecture](#architecture) · [Request flow](#request-flow) · [Run](#run-it) · [Auth](#authentication) · [Project map](#project-map) · [Delivery](#delivery)
@@ -48,14 +48,16 @@ flowchart TB
     Domain --> SharedKernel
 
     Infrastructure --> PostgreSQL[(PostgreSQL)]
+    Presentation -. validates JWTs from .-> IdP[OIDC identity provider<br/>Keycloak locally]
     AppHost[.NET Aspire AppHost] -. orchestrates .-> Presentation
     AppHost -. provisions locally .-> PostgreSQL
+    AppHost -. provisions locally .-> IdP
     ServiceDefaults[ServiceDefaults<br/>OTel · discovery · resilience] -. configures .-> Presentation
 
     classDef core fill:#102a43,color:#fff,stroke:#38bdf8,stroke-width:2px;
     classDef outer fill:#f8fafc,color:#0f172a,stroke:#64748b;
     class Domain,Application,SharedKernel core;
-    class Presentation,Infrastructure,AppHost,ServiceDefaults,PostgreSQL,Client outer;
+    class Presentation,Infrastructure,AppHost,ServiceDefaults,PostgreSQL,IdP,Client outer;
 ```
 
 | Project | Owns | May depend on |
@@ -113,7 +115,7 @@ sequenceDiagram
 aspire run
 ```
 
-Starts the API, PostgreSQL, and the Aspire dashboard with logs, traces, and metrics.
+Starts the API, PostgreSQL, Keycloak, and the Aspire dashboard with logs, traces, and metrics.
 
 ### 🐳 Docker Compose
 
@@ -126,6 +128,7 @@ docker compose up --build
 | API | `http://localhost:8080` |
 | Scalar API reference | `http://localhost:8080/scalar/v1` |
 | OpenAPI document | `http://localhost:8080/openapi/v1.json` |
+| Keycloak (admin console `admin` / `admin`, dev only) | `http://localhost:8180` |
 
 <details>
 <summary><strong>Run with a separate PostgreSQL instance</strong></summary>
@@ -163,24 +166,58 @@ Provider-agnostic JWT bearer tokens (`Microsoft.AspNetCore.Authentication.JwtBea
 
 **Secure by default** — an authorization fallback policy requires an authenticated user on every endpoint that declares nothing, so a new endpoint is never accidentally public. Public routes are opt-in via `AllowAnonymous()`: the health probes (`/health`, `/alive`), the OpenAPI document, and Scalar (Development only). A convention test pins that allow-list, and the OpenAPI document declares `401` (plus `403` for scoped operations) on every protected operation.
 
-**Local development** — mint a token with the built-in tool (it stores the signing key in user secrets and adds the issuer/audience to `appsettings.Development.json`):
+- Write endpoints require a `scope` claim containing `products:write` (space-delimited or one claim per scope).
+- Inbound claim mapping is disabled, so `sub` is the audited user id.
+
+### Local: Keycloak (Docker Compose and Aspire)
+
+Both setups start Keycloak on port `8180` and import the realm-as-code in [`deploy/keycloak/clean-architecture-realm.json`](deploy/keycloak/clean-architecture-realm.json). Access tokens carry `aud = clean-architecture-api` and the granted scopes in `scope`.
+
+| | Docker Compose | Aspire |
+|---|---|---|
+| Keycloak / issuer | `http://localhost:8180/realms/clean-architecture` | `https://localhost:8180/realms/clean-architecture` (dev certificate) |
+| Scalar | `http://localhost:8080/scalar/v1` | `http://localhost:5236/scalar/v1` |
+
+> [!WARNING]
+> Every credential in the realm file and the compose file is a **dev-only** value, committed on purpose. Never reuse them.
+
+| Client | Grant | Proves |
+|---|---|---|
+| `clean-architecture-service` / `dev-only-service-secret` | Client credentials, `products:write` by default | Reads and writes succeed (`201`/`200`) |
+| `clean-architecture-reader` / `dev-only-reader-secret` | Client credentials, no scope | Reads succeed, writes return `403` |
+| `scalar` (public) + user `alice` / `alice` | Authorization Code + PKCE, `products:write` optional | Interactive sign-in from Scalar |
+
+```bash
+TOKEN=$(curl -s http://localhost:8180/realms/clean-architecture/protocol/openid-connect/token \
+  -d grant_type=client_credentials \
+  -d client_id=clean-architecture-service -d client_secret=dev-only-service-secret | jq -r .access_token)
+
+curl -i http://localhost:8080/api/products -H "Authorization: Bearer $TOKEN"
+```
+
+- **Scalar** — open the reference, choose the `OAuth2` scheme, and sign in as `alice`. The flow comes from the optional `OpenApi:OAuth2` section (`AuthorizationUrl`, `TokenUrl`, `ClientId`); when it is not set, Scalar only offers the Bearer field.
+- **`.http` file** — `CleanArchitecture.Presentation.http` requests a Keycloak token first and reuses it as `{{token}}`.
+- **Issuer inside Compose** — the API fetches signing keys from `http://keycloak:8080` (`Authority`), while tokens requested from the host are issued by `http://localhost:8180`: Keycloak's `KC_HOSTNAME` pins the issuer and `KC_HOSTNAME_BACKCHANNEL_DYNAMIC` keeps the key endpoints on the internal name. `RequireHttpsMetadata=false` is set only by the local orchestrators.
+
+### Local: API alone with `dotnet user-jwts`
+
+Running just `dotnet run --project src/CleanArchitecture.Presentation` needs no identity provider. Mint a token with the built-in tool (it stores the signing key in user secrets and writes the issuer/audience to `appsettings.Development.json`):
 
 ```bash
 dotnet user-jwts create --project src/CleanArchitecture.Presentation --scope products:write
 ```
 
-Omit `--scope` for a read-only token. Use it as `Authorization: Bearer <token>` (`CleanArchitecture.Presentation.http` has a `@token` variable; Scalar has a Bearer auth field).
+Omit `--scope` for a read-only token.
 
-**Production** — point the API at your identity provider through configuration (environment variables use `__` separators):
+### Production
+
+Point the API at your identity provider through configuration (environment variables use `__` separators):
 
 | Key | Purpose |
 |---|---|
 | `Authentication__Schemes__Bearer__Authority` | Issuer URL; signing keys are discovered from its OIDC metadata |
 | `Authentication__Schemes__Bearer__ValidAudiences__0` | Audience the API accepts (add `__1`, … for more) |
 | `Authentication__Schemes__Bearer__ValidIssuer` | Optional; only when the token `iss` differs from `Authority` |
-
-- Write endpoints require a `scope` claim containing `products:write` (space-delimited or one claim per scope).
-- Inbound claim mapping is disabled, so `sub` is the audited user id.
 
 ## 🗂️ Project map
 
@@ -197,6 +234,7 @@ tests/
 ├── *.UnitTests                         # Layer-focused tests
 ├── CleanArchitecture.IntegrationTests  # HTTP end to end against real PostgreSQL
 └── CleanArchitecture.ArchitectureTests # Dependency and convention rules
+deploy/keycloak/                        # Local Keycloak realm as code (dev only)
 terraform/                              # Azure Container Apps + PostgreSQL
 ```
 
@@ -219,7 +257,7 @@ dotnet tool restore && dotnet test CleanArchitecture.slnx --coverage --coverage-
 | Gate | Coverage |
 |---|---|
 | Build | Nullable enabled, analyzers, deterministic output, warnings as errors |
-| Tests | **207 tests** across six projects |
+| Tests | **210 tests** across six projects |
 | Architecture | Layer, handler, repository, command/query, and mediator conventions |
 | CI | Build, test, formatting, Docker build, Terraform format + validation |
 

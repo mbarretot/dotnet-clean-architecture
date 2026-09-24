@@ -1,8 +1,23 @@
+# 5236 = `dotnet run` / Aspire; use http://localhost:8080 for Docker Compose.
 @baseUrl = http://localhost:5236
 @productId = 00000000-0000-0000-0000-000000000000
-# Mint a local token (write scope included) and paste it here:
+# Keycloak: http:// under Docker Compose, https:// (dev certificate) under Aspire.
+@keycloakUrl = http://localhost:8180/realms/clean-architecture
+
+# Token source A (Docker Compose / Aspire): run the "Get a token from Keycloak" request below first.
+# Swap in clean-architecture-reader / dev-only-reader-secret to get a read-only token (writes return 403).
+@token = {{tokenRequest.response.body.access_token}}
+
+# Token source B (API running alone): mint a token and paste it instead of the line above:
 #   dotnet user-jwts create --project src/CleanArchitecture.Presentation --scope products:write
-@token = paste-token-here
+# @token = paste-token-here
+
+### Get a token from Keycloak (client credentials; DEV-ONLY secret from deploy/keycloak)
+# @name tokenRequest
+POST {{keycloakUrl}}/protocol/openid-connect/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=client_credentials&client_id=clean-architecture-service&client_secret=dev-only-service-secret
 
 ### Create a product
 POST {{baseUrl}}/api/products

@@ -1,0 +1,114 @@
+{
+  "realm": "clean-architecture",
+  "displayName": "Clean Architecture (local development only)",
+  "enabled": true,
+  "sslRequired": "none",
+  "accessTokenLifespan": 900,
+  "defaultDefaultClientScopes": ["basic", "clean-architecture-api-audience"],
+  "defaultOptionalClientScopes": [],
+  "clientScopes": [
+    {
+      "name": "basic",
+      "description": "Adds the sub claim (Keycloak's built-in 'basic' scope, redeclared because this realm lists its scopes explicitly).",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "false",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "sub",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-sub-mapper",
+          "config": {
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "name": "clean-architecture-api-audience",
+      "description": "Sets aud=clean-architecture-api, the audience the API validates.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "false",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "clean-architecture-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "clean-architecture-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "name": "products:write",
+      "description": "Create, update and delete products.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      }
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "clean-architecture-service",
+      "description": "DEV ONLY. Machine client (client_credentials) with products:write: can read and write.",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "dev-only-service-secret",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": ["basic", "clean-architecture-api-audience", "products:write"],
+      "optionalClientScopes": []
+    },
+    {
+      "clientId": "clean-architecture-reader",
+      "description": "DEV ONLY. Machine client (client_credentials) without products:write: reads succeed, writes return 403.",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "dev-only-reader-secret",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": ["basic", "clean-architecture-api-audience"],
+      "optionalClientScopes": []
+    },
+    {
+      "clientId": "scalar",
+      "description": "DEV ONLY. Public client for Scalar: Authorization Code + PKCE, products:write on request.",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": ["http://localhost:8080/scalar/*", "http://localhost:5236/scalar/*"],
+      "webOrigins": ["+"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "defaultClientScopes": ["basic", "clean-architecture-api-audience"],
+      "optionalClientScopes": ["products:write"]
+    }
+  ],
+  "users": [
+    {
+      "username": "alice",
+      "email": "alice@example.com",
+      "firstName": "Alice",
+      "lastName": "Developer",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "alice", "temporary": false }]
+    }
+  ]
+}
