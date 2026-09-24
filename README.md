@@ -261,6 +261,7 @@ dotnet tool restore && dotnet test CleanArchitecture.slnx --coverage --coverage-
 | Tests | **224 tests** across six projects |
 | Architecture | Layer, handler, repository, command/query, and mediator conventions |
 | CI | Build, test, formatting, Docker build, Terraform format + validation |
+| Supply chain | Vulnerable NuGet package gate (incl. transitive), CodeQL (C# + workflows), weekly grouped Dependabot updates |
 
 ## 📦 Delivery
 

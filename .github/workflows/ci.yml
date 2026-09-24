@@ -41,6 +41,26 @@ jobs:
       - name: Restore
         run: dotnet restore CleanArchitecture.slnx
 
+      - name: Check for vulnerable NuGet packages
+        # `dotnet list package --vulnerable` exits 0 even when it finds advisories, and its text
+        # output is localized, so the gate parses the JSON report (top-level and transitive).
+        run: |
+          dotnet list CleanArchitecture.slnx package --vulnerable --include-transitive --format json \
+            > vulnerable-packages.json
+          findings=$(jq -r '
+            .projects[] as $p | ($p.frameworks // [])[] as $f
+            | (($f.topLevelPackages // []) + ($f.transitivePackages // []))[]
+            | select((.vulnerabilities // []) | length > 0) as $pkg
+            | $pkg.vulnerabilities[]
+            | "\($p.path | split("/") | last) [\($f.framework)] \($pkg.id) \($pkg.resolvedVersion): \(.severity) \(.advisoryurl)"
+          ' vulnerable-packages.json)
+          if [ -n "$findings" ]; then
+            echo "::error::Vulnerable NuGet packages found:"
+            echo "$findings"
+            exit 1
+          fi
+          echo "No vulnerable NuGet packages (including transitive)."
+
       - name: Build (warnings as errors)
         run: dotnet build CleanArchitecture.slnx --no-restore -warnaserror
 
