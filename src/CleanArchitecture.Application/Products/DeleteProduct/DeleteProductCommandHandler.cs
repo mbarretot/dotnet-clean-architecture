@@ -5,7 +5,10 @@ using CleanArchitecture.SharedKernel.Results;
 
 namespace CleanArchitecture.Application.Products.DeleteProduct;
 
-/// <summary>Soft-deletes (deactivates) to preserve history and referential integrity for past orders.</summary>
+/// <summary>
+/// Soft-deletes to preserve history and referential integrity for past orders. Deleted products are hidden
+/// by a global query filter, so deleting one twice finds nothing and returns not found.
+/// </summary>
 public sealed class DeleteProductCommandHandler(IProductRepository productRepository, IUnitOfWork unitOfWork)
     : ICommandHandler<DeleteProductCommand>
 {
@@ -17,11 +20,7 @@ public sealed class DeleteProductCommandHandler(IProductRepository productReposi
             return Result.Failure(ProductErrors.NotFound(request.Id));
         }
 
-        var deactivateResult = product.Deactivate();
-        if (deactivateResult.IsFailure)
-        {
-            return deactivateResult;
-        }
+        product.Delete();
 
         productRepository.Update(product);
         await unitOfWork.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

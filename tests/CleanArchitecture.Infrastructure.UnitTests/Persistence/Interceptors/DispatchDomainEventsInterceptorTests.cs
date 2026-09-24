@@ -52,7 +52,7 @@ public sealed class DispatchDomainEventsInterceptorTests : IDisposable
 
         _publisher.ClearReceivedCalls();
 
-        _ = product.Deactivate();
+        // Marking the aggregate modified without calling a domain method raises no event.
         context.Products.Update(product);
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 

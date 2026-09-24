@@ -19,9 +19,6 @@ public static class ProductErrors
     public static readonly Error SkuAlreadyExists =
         Error.Conflict("Product.SkuAlreadyExists", "A product with the same SKU already exists.");
 
-    public static readonly Error AlreadyInactive =
-        Error.Conflict("Product.AlreadyInactive", "The product is already inactive.");
-
     public static Error NotFound(Guid productId) =>
         Error.NotFound("Product.NotFound", $"The product with identifier '{productId}' was not found.");
 }

@@ -4,7 +4,7 @@ using CleanArchitecture.SharedKernel.Results;
 
 namespace CleanArchitecture.Domain.Products;
 
-public sealed class Product : AggregateRoot
+public sealed class Product : AggregateRoot, ISoftDeletable
 {
     private Product(Guid id, string name, string description, Money price, Sku sku)
         : base(id)
@@ -13,7 +13,6 @@ public sealed class Product : AggregateRoot
         Description = description;
         Price = price;
         Sku = sku;
-        IsActive = true;
     }
 
     /// <summary>For EF Core only: <see cref="Price"/> is an owned-type navigation, which constructor binding can't populate.</summary>
@@ -33,7 +32,11 @@ public sealed class Product : AggregateRoot
 
     public Sku Sku { get; private set; }
 
-    public bool IsActive { get; private set; }
+    public bool IsDeleted { get; private set; }
+
+    public DateTimeOffset? DeletedOnUtc { get; private set; }
+
+    public string? DeletedBy { get; private set; }
 
     /// <summary>Raises <see cref="ProductCreatedDomainEvent"/>.</summary>
     public static Result<Product> Create(string name, string description, Money price, Sku sku)
@@ -66,15 +69,19 @@ public sealed class Product : AggregateRoot
         return Result.Success();
     }
 
-    public Result Deactivate()
+    /// <summary>
+    /// Soft-deletes the product and raises <see cref="ProductDeletedDomainEvent"/>; idempotent.
+    /// <see cref="DeletedOnUtc"/> and <see cref="DeletedBy"/> are stamped by persistence, like the audit columns.
+    /// </summary>
+    public void Delete()
     {
-        if (!IsActive)
+        if (IsDeleted)
         {
-            return Result.Failure(ProductErrors.AlreadyInactive);
+            return;
         }
 
-        IsActive = false;
+        IsDeleted = true;
 
-        return Result.Success();
+        Raise(new ProductDeletedDomainEvent(Id));
     }
 }

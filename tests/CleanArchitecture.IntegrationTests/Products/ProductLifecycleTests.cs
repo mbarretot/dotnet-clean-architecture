@@ -23,7 +23,7 @@ public sealed class ProductLifecycleTests(ApiFactory factory) : IntegrationTest(
 
         // Get by id
         var created = await client.GetFromJsonAsync<ProductResponse>($"/api/products/{id}", CancellationToken);
-        created.ShouldBe(new ProductResponse(id, "Mechanical Keyboard", "Hot-swappable switches", 129.99m, "USD", "KB-001", IsActive: true));
+        created.ShouldBe(new ProductResponse(id, "Mechanical Keyboard", "Hot-swappable switches", 129.99m, "USD", "KB-001"));
 
         // List
         var listed = await client.GetFromJsonAsync<List<ProductResponse>>("/api/products", CancellationToken);
@@ -35,14 +35,44 @@ public sealed class ProductLifecycleTests(ApiFactory factory) : IntegrationTest(
         updateResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
 
         var updated = await client.GetFromJsonAsync<ProductResponse>($"/api/products/{id}", CancellationToken);
-        updated.ShouldBe(new ProductResponse(id, "Wireless Keyboard", "Bluetooth", 99.50m, "EUR", "KB-001", IsActive: true));
+        updated.ShouldBe(new ProductResponse(id, "Wireless Keyboard", "Bluetooth", 99.50m, "EUR", "KB-001"));
 
-        // Delete is a soft delete (see DeleteProductCommandHandler): the product stays readable, but inactive.
+        // Delete is a soft delete: the row stays in the database, but the global query filter hides it.
         var deleteResponse = await client.DeleteAsync($"/api/products/{id}", CancellationToken);
         deleteResponse.StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
-        var deleted = await client.GetFromJsonAsync<ProductResponse>($"/api/products/{id}", CancellationToken);
-        deleted.ShouldNotBeNull().IsActive.ShouldBeFalse();
+        var getDeletedResponse = await client.GetAsync($"/api/products/{id}", CancellationToken);
+        getDeletedResponse.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+
+        var listedAfterDelete = await client.GetFromJsonAsync<List<ProductResponse>>("/api/products", CancellationToken);
+        listedAfterDelete.ShouldNotBeNull().ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Listing_excludes_deleted_products()
+    {
+        using var client = CreateWriterClient();
+        var keptId = await CreateProductAsync(client, NewProduct("Kept", "SKU-KEPT"));
+        var deletedId = await CreateProductAsync(client, NewProduct("Deleted", "SKU-GONE"));
+        (await client.DeleteAsync($"/api/products/{deletedId}", CancellationToken)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        var listed = await client.GetFromJsonAsync<List<ProductResponse>>("/api/products", CancellationToken);
+
+        listed.ShouldNotBeNull().Select(product => product.Id).ShouldBe([keptId]);
+    }
+
+    [Fact]
+    public async Task Sku_of_a_deleted_product_can_be_reused()
+    {
+        using var client = CreateWriterClient();
+        var deletedId = await CreateProductAsync(client, NewProduct("Original", "SKU-REUSE"));
+        (await client.DeleteAsync($"/api/products/{deletedId}", CancellationToken)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        var response = await client.PostAsJsonAsync("/api/products", NewProduct("Replacement", "SKU-REUSE"), CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Created);
+        var id = await response.Content.ReadFromJsonAsync<Guid>(CancellationToken);
+        id.ShouldNotBe(deletedId);
     }
 
     [Fact]

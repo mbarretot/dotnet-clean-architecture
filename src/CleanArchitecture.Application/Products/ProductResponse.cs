@@ -6,5 +6,4 @@ public sealed record ProductResponse(
     string Description,
     decimal Price,
     string Currency,
-    string Sku,
-    bool IsActive);
+    string Sku);

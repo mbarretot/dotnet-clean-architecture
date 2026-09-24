@@ -75,7 +75,7 @@ public class ResultExtensionsTests
     [Fact]
     public void ToOkResult_WithFailedResult_ReturnsProblem()
     {
-        var result = Result.Failure(Error.Conflict("Product.AlreadyInactive", "Already inactive."));
+        var result = Result.Failure(Error.Conflict("Product.SkuAlreadyExists", "SKU already exists."));
 
         var httpResult = result.ToOkResult();
 

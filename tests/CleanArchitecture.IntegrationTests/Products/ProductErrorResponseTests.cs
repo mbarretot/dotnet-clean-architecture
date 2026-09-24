@@ -86,7 +86,7 @@ public sealed class ProductErrorResponseTests(ApiFactory factory) : IntegrationT
     }
 
     [Fact]
-    public async Task Deleting_an_already_deleted_product_returns_conflict_problem()
+    public async Task Deleting_an_already_deleted_product_returns_not_found_problem()
     {
         using var client = CreateWriterClient();
         var id = await CreateProductAsync(client, NewProduct());
@@ -94,7 +94,32 @@ public sealed class ProductErrorResponseTests(ApiFactory factory) : IntegrationT
 
         var response = await client.DeleteAsync($"/api/products/{id}", CancellationToken);
 
-        await ShouldBeProblemAsync(response, HttpStatusCode.Conflict, "Product.AlreadyInactive");
+        await ShouldBeProblemAsync(response, HttpStatusCode.NotFound, "Product.NotFound");
+    }
+
+    [Fact]
+    public async Task Get_deleted_product_returns_not_found_problem()
+    {
+        using var client = CreateWriterClient();
+        var id = await CreateProductAsync(client, NewProduct());
+        (await client.DeleteAsync($"/api/products/{id}", CancellationToken)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        var response = await client.GetAsync($"/api/products/{id}", CancellationToken);
+
+        await ShouldBeProblemAsync(response, HttpStatusCode.NotFound, "Product.NotFound");
+    }
+
+    [Fact]
+    public async Task Update_deleted_product_returns_not_found_problem()
+    {
+        using var client = CreateWriterClient();
+        var id = await CreateProductAsync(client, NewProduct());
+        (await client.DeleteAsync($"/api/products/{id}", CancellationToken)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        var request = new UpdateProductRequest { Name = "Keyboard", Description = "", Price = 1m, Currency = "USD" };
+
+        var response = await client.PutAsJsonAsync($"/api/products/{id}", request, CancellationToken);
+
+        await ShouldBeProblemAsync(response, HttpStatusCode.NotFound, "Product.NotFound");
     }
 
     private static async Task ShouldBeProblemAsync(HttpResponseMessage response, HttpStatusCode statusCode, string title)

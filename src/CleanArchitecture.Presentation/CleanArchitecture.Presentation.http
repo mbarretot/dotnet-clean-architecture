@@ -54,7 +54,7 @@ Content-Type: application/json
   "currency": "USD"
 }
 
-### Delete (deactivate) a product
+### Delete (soft-delete) a product — afterwards GET returns 404
 DELETE {{baseUrl}}/api/products/{{productId}}
 Authorization: Bearer {{token}}
 

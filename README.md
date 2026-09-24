@@ -11,7 +11,7 @@
 [![Aspire](https://img.shields.io/badge/.NET_Aspire-13.4-7B2CBF?style=flat-square&logo=dotnet&logoColor=white)](https://learn.microsoft.com/dotnet/aspire/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16%20%7C%2017-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-enabled-F5A800?style=flat-square&logo=opentelemetry&logoColor=black)](https://opentelemetry.io/)
-[![Tests](https://img.shields.io/badge/tests-192_passing-2EA44F?style=flat-square)](#quality-gates)
+[![Tests](https://img.shields.io/badge/tests-207_passing-2EA44F?style=flat-square)](#quality-gates)
 [![License: MIT](https://img.shields.io/badge/license-MIT-22C55E?style=flat-square)](LICENSE)
 
 [Architecture](#architecture) · [Request flow](#request-flow) · [Run](#run-it) · [Auth](#authentication) · [Project map](#project-map) · [Delivery](#delivery)
@@ -28,7 +28,7 @@
 | **Architecture** | Clean Architecture, CQRS-style commands/queries, inward-only dependencies |
 | **Domain** | Aggregates, value objects, domain events, `Result` / `Result<T>` |
 | **API** | ASP.NET Core Minimal APIs, endpoint discovery, RFC 7807, OpenAPI + Scalar |
-| **Data** | EF Core 10, PostgreSQL, migrations, auditing, optimistic concurrency |
+| **Data** | EF Core 10, PostgreSQL, migrations, auditing, soft delete via a named global query filter, optimistic concurrency |
 | **Platform** | .NET Aspire, OpenTelemetry, Docker, Azure Container Apps, Terraform |
 | **Quality** | xUnit v3, Shouldly, NSubstitute, NetArchTest, warnings as errors |
 
@@ -155,7 +155,7 @@ dotnet ef database update \
 | `GET` | `/api/products/{id}` | Get one product | Authenticated user |
 | `POST` | `/api/products` | Create a product | `products:write` scope |
 | `PUT` | `/api/products/{id}` | Update a product | `products:write` scope |
-| `DELETE` | `/api/products/{id}` | Deactivate a product | `products:write` scope |
+| `DELETE` | `/api/products/{id}` | Soft-delete a product (then reads as `404`) | `products:write` scope |
 
 ## 🔐 Authentication
 
@@ -219,7 +219,7 @@ dotnet tool restore && dotnet test CleanArchitecture.slnx --coverage --coverage-
 | Gate | Coverage |
 |---|---|
 | Build | Nullable enabled, analyzers, deterministic output, warnings as errors |
-| Tests | **192 tests** across six projects |
+| Tests | **207 tests** across six projects |
 | Architecture | Layer, handler, repository, command/query, and mediator conventions |
 | CI | Build, test, formatting, Docker build, Terraform format + validation |
 

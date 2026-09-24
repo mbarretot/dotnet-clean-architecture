@@ -6,7 +6,10 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace CleanArchitecture.Infrastructure.Persistence.Interceptors;
 
-/// <summary>Stamps who/when before the write (<see cref="SavingChanges"/>), so stamped values are persisted.</summary>
+/// <summary>
+/// Stamps who/when before the write (<see cref="SavingChanges"/>), so stamped values are persisted: creation and
+/// modification for <see cref="IAuditable"/>, deletion for <see cref="ISoftDeletable"/> entities.
+/// </summary>
 public sealed class AuditableEntitySaveChangesInterceptor(
     IDateTimeProvider dateTimeProvider,
     ICurrentUser currentUser) : SaveChangesInterceptor
@@ -58,6 +61,17 @@ public sealed class AuditableEntitySaveChangesInterceptor(
                 case EntityState.Deleted:
                 default:
                     break;
+            }
+        }
+
+        // Stamped only once, when the flag first flips: a later save of an already deleted entity keeps the original stamp.
+        foreach (var entry in context.ChangeTracker.Entries<ISoftDeletable>())
+        {
+            if (entry.State is EntityState.Added or EntityState.Modified
+                && entry.Entity is { IsDeleted: true, DeletedOnUtc: null })
+            {
+                entry.Property(nameof(ISoftDeletable.DeletedOnUtc)).CurrentValue = now;
+                entry.Property(nameof(ISoftDeletable.DeletedBy)).CurrentValue = userId;
             }
         }
     }

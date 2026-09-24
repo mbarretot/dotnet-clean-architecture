@@ -17,7 +17,7 @@ public class DeleteProductCommandHandlerTests
         Product.Create("Name", "Description", Money.Create(10, "USD").Value, Sku.Create("SKU-1").Value).Value;
 
     [Fact]
-    public async Task Handle_WithExistingProduct_DeactivatesAndSaves()
+    public async Task Handle_WithExistingProduct_SoftDeletesAndSaves()
     {
         var product = CreateExistingProduct();
         _productRepository.GetByIdAsync(product.Id, Arg.Any<CancellationToken>()).Returns(product);
@@ -26,7 +26,8 @@ public class DeleteProductCommandHandlerTests
         var result = await sut.Handle(new DeleteProductCommand(product.Id), TestContext.Current.CancellationToken);
 
         result.IsSuccess.ShouldBeTrue();
-        product.IsActive.ShouldBeFalse();
+        product.IsDeleted.ShouldBeTrue();
+        _productRepository.DidNotReceive().Remove(Arg.Any<Product>());
         _productRepository.Received(1).Update(product);
         await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
@@ -40,21 +41,6 @@ public class DeleteProductCommandHandlerTests
         var result = await sut.Handle(new DeleteProductCommand(Guid.NewGuid()), TestContext.Current.CancellationToken);
 
         result.IsFailure.ShouldBeTrue();
-        await _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
-    }
-
-    [Fact]
-    public async Task Handle_WhenAlreadyInactive_ReturnsFailureWithoutSaving()
-    {
-        var product = CreateExistingProduct();
-        product.Deactivate();
-        _productRepository.GetByIdAsync(product.Id, Arg.Any<CancellationToken>()).Returns(product);
-        var sut = CreateSut();
-
-        var result = await sut.Handle(new DeleteProductCommand(product.Id), TestContext.Current.CancellationToken);
-
-        result.IsFailure.ShouldBeTrue();
-        result.Error.ShouldBe(ProductErrors.AlreadyInactive);
         await _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 }

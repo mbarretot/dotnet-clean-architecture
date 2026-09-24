@@ -40,11 +40,29 @@ public sealed class ProductAuditingTests(ApiFactory factory) : IntegrationTest(f
         product.ModifiedAt.ShouldNotBeNull();
     }
 
+    [Fact]
+    public async Task Deleted_product_is_kept_and_records_the_callers_subject()
+    {
+        using var client = CreateWriterClient();
+        var id = await CreateProductAsync(client, NewProduct());
+
+        (await client.DeleteAsync($"/api/products/{id}", CancellationToken)).EnsureSuccessStatusCode();
+
+        var product = await FindProductAsync(id);
+        product.IsDeleted.ShouldBeTrue();
+        product.DeletedBy.ShouldBe(WriterSubject);
+        product.DeletedOnUtc.ShouldNotBeNull();
+    }
+
+    /// <summary>Bypasses the soft-delete filter so deleted rows can be inspected too.</summary>
     private async Task<Product> FindProductAsync(Guid id)
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-        return await dbContext.Products.AsNoTracking().SingleAsync(product => product.Id == id, CancellationToken);
+        return await dbContext.Products
+            .AsNoTracking()
+            .IgnoreQueryFilters([ApplicationDbContext.SoftDeleteFilter])
+            .SingleAsync(product => product.Id == id, CancellationToken);
     }
 }
