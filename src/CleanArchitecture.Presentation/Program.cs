@@ -4,6 +4,7 @@ using CleanArchitecture.Infrastructure;
 using CleanArchitecture.Infrastructure.Persistence;
 using CleanArchitecture.Presentation.Extensions;
 using CleanArchitecture.Presentation.Middleware;
+using CleanArchitecture.Presentation.OpenApi;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -14,7 +15,11 @@ builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddEndpoints(Assembly.GetExecutingAssembly());
 
-builder.Services.AddOpenApi();
+builder.Services.AddAuthenticationAndAuthorization();
+
+builder.Services.AddOpenApi(options => options
+    .AddDocumentTransformer<BearerSecuritySchemeTransformer>()
+    .AddOperationTransformer<BearerSecuritySchemeTransformer>());
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
@@ -29,6 +34,10 @@ if (isRunningAsTheEntryPoint)
 }
 
 app.UseExceptionHandler();
+
+// Authentication must populate HttpContext.User before authorization evaluates endpoint policies.
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapDefaultEndpoints();
 

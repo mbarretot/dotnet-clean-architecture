@@ -1,4 +1,5 @@
 using CleanArchitecture.Application.Products.DeleteProduct;
+using CleanArchitecture.Presentation.Authorization;
 using CleanArchitecture.Presentation.Extensions;
 using CleanArchitecture.SharedKernel.Messaging;
 
@@ -12,6 +13,7 @@ public sealed class DeleteProduct : IEndpoint
         endpoints.MapDelete("/api/products/{id:guid}", HandleAsync)
             .WithName("DeleteProduct")
             .WithTags(ProductEndpointTags.Products)
+            .RequireAuthorization(AuthorizationPolicies.ProductsWrite)
             .WithSummary("Delete a product")
             .WithDescription("Deactivates the product with the given identifier, preserving its history.")
             .Produces(StatusCodes.Status204NoContent)

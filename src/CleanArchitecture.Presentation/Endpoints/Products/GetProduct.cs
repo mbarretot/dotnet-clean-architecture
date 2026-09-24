@@ -14,6 +14,7 @@ public sealed class GetProduct : IEndpoint
         endpoints.MapGet("/api/products/{id:guid}", HandleAsync)
             .WithName("GetProduct")
             .WithTags(ProductEndpointTags.Products)
+            .RequireAuthorization()
             .WithSummary("Get a product by id")
             .WithDescription("Returns the product with the given identifier.")
             .Produces<ProductResponse>(StatusCodes.Status200OK)

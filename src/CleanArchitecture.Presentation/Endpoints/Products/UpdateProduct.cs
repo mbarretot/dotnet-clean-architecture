@@ -1,4 +1,5 @@
 using CleanArchitecture.Application.Products.UpdateProduct;
+using CleanArchitecture.Presentation.Authorization;
 using CleanArchitecture.Presentation.Extensions;
 using CleanArchitecture.SharedKernel.Messaging;
 
@@ -23,6 +24,7 @@ public sealed class UpdateProduct : IEndpoint
         endpoints.MapPut("/api/products/{id:guid}", HandleAsync)
             .WithName("UpdateProduct")
             .WithTags(ProductEndpointTags.Products)
+            .RequireAuthorization(AuthorizationPolicies.ProductsWrite)
             .WithSummary("Update a product")
             .WithDescription("Updates an existing product's name, description and price.")
             .Produces(StatusCodes.Status200OK)

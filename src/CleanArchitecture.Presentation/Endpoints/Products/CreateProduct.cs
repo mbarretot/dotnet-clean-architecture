@@ -1,4 +1,5 @@
 using CleanArchitecture.Application.Products.CreateProduct;
+using CleanArchitecture.Presentation.Authorization;
 using CleanArchitecture.Presentation.Extensions;
 using CleanArchitecture.SharedKernel.Messaging;
 using CleanArchitecture.SharedKernel.Results;
@@ -26,6 +27,7 @@ public sealed class CreateProduct : IEndpoint
         endpoints.MapPost("/api/products", HandleAsync)
             .WithName("CreateProduct")
             .WithTags(ProductEndpointTags.Products)
+            .RequireAuthorization(AuthorizationPolicies.ProductsWrite)
             .WithSummary("Create a product")
             .WithDescription("Creates a new product in the catalog and returns the identifier of the new resource.")
             .Produces<Guid>(StatusCodes.Status201Created)

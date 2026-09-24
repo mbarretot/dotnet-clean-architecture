@@ -11,10 +11,10 @@
 [![Aspire](https://img.shields.io/badge/.NET_Aspire-13.4-7B2CBF?style=flat-square&logo=dotnet&logoColor=white)](https://learn.microsoft.com/dotnet/aspire/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16%20%7C%2017-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-enabled-F5A800?style=flat-square&logo=opentelemetry&logoColor=black)](https://opentelemetry.io/)
-[![Tests](https://img.shields.io/badge/tests-121_passing-2EA44F?style=flat-square)](#quality-gates)
+[![Tests](https://img.shields.io/badge/tests-144_passing-2EA44F?style=flat-square)](#quality-gates)
 [![License: MIT](https://img.shields.io/badge/license-MIT-22C55E?style=flat-square)](LICENSE)
 
-[Architecture](#architecture) · [Request flow](#request-flow) · [Run](#run-it) · [Project map](#project-map) · [Delivery](#delivery)
+[Architecture](#architecture) · [Request flow](#request-flow) · [Run](#run-it) · [Auth](#authentication) · [Project map](#project-map) · [Delivery](#delivery)
 
 </div>
 
@@ -149,13 +149,36 @@ dotnet ef database update \
 
 ## 🔌 API surface
 
-| Method | Route | Purpose |
-|---|---|---|
-| `GET` | `/api/products` | List products with pagination |
-| `GET` | `/api/products/{id}` | Get one product |
-| `POST` | `/api/products` | Create a product |
-| `PUT` | `/api/products/{id}` | Update a product |
-| `DELETE` | `/api/products/{id}` | Deactivate a product |
+| Method | Route | Purpose | Requires |
+|---|---|---|---|
+| `GET` | `/api/products` | List products with pagination | Authenticated user |
+| `GET` | `/api/products/{id}` | Get one product | Authenticated user |
+| `POST` | `/api/products` | Create a product | `products:write` scope |
+| `PUT` | `/api/products/{id}` | Update a product | `products:write` scope |
+| `DELETE` | `/api/products/{id}` | Deactivate a product | `products:write` scope |
+
+## 🔐 Authentication
+
+Provider-agnostic JWT bearer tokens (`Microsoft.AspNetCore.Authentication.JwtBearer`), configured from `Authentication:Schemes:Bearer`. Health endpoints, the OpenAPI document, and Scalar stay anonymous; without a configured issuer the API still starts and protected calls return `401`.
+
+**Local development** — mint a token with the built-in tool (it stores the signing key in user secrets and adds the issuer/audience to `appsettings.Development.json`):
+
+```bash
+dotnet user-jwts create --project src/CleanArchitecture.Presentation --scope products:write
+```
+
+Omit `--scope` for a read-only token. Use it as `Authorization: Bearer <token>` (`CleanArchitecture.Presentation.http` has a `@token` variable; Scalar has a Bearer auth field).
+
+**Production** — point the API at your identity provider through configuration (environment variables use `__` separators):
+
+| Key | Purpose |
+|---|---|
+| `Authentication__Schemes__Bearer__Authority` | Issuer URL; signing keys are discovered from its OIDC metadata |
+| `Authentication__Schemes__Bearer__ValidAudiences__0` | Audience the API accepts (add `__1`, … for more) |
+| `Authentication__Schemes__Bearer__ValidIssuer` | Optional; only when the token `iss` differs from `Authority` |
+
+- Write endpoints require a `scope` claim containing `products:write` (space-delimited or one claim per scope).
+- Inbound claim mapping is disabled, so `sub` is the audited user id.
 
 ## 🗂️ Project map
 
@@ -191,7 +214,7 @@ dotnet tool restore && dotnet test CleanArchitecture.slnx --coverage --coverage-
 | Gate | Coverage |
 |---|---|
 | Build | Nullable enabled, analyzers, deterministic output, warnings as errors |
-| Tests | **121 tests** across five projects |
+| Tests | **144 tests** across five projects |
 | Architecture | Layer, handler, repository, command/query, and mediator conventions |
 | CI | Build, test, formatting, Docker build, Terraform format + validation |
 

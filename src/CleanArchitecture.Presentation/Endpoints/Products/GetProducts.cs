@@ -14,6 +14,7 @@ public sealed class GetProducts : IEndpoint
         endpoints.MapGet("/api/products", HandleAsync)
             .WithName("GetProducts")
             .WithTags(ProductEndpointTags.Products)
+            .RequireAuthorization()
             .WithSummary("List products")
             .WithDescription("Returns a page of products ordered by name.")
             .Produces<IReadOnlyList<ProductResponse>>(StatusCodes.Status200OK);
