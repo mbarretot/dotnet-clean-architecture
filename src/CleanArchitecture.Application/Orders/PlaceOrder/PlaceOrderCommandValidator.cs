@@ -4,7 +4,6 @@ namespace CleanArchitecture.Application.Orders.PlaceOrder;
 
 public sealed class PlaceOrderCommandValidator : AbstractValidator<PlaceOrderCommand>
 {
-    /// <summary>Each distinct product is loaded to snapshot it, so the line count is bounded.</summary>
     public const int MaxLines = 100;
 
     public PlaceOrderCommandValidator()

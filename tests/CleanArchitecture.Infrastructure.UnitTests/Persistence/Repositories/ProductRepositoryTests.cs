@@ -12,7 +12,6 @@ using Shouldly;
 
 namespace CleanArchitecture.Infrastructure.UnitTests.Persistence.Repositories;
 
-/// <summary>Proves the value-object mappings (<see cref="Sku"/>, <see cref="Money"/>) round-trip through real SQL.</summary>
 public sealed class ProductRepositoryTests : IDisposable
 {
     private readonly SqliteApplicationDbContextFixture _fixture = new();

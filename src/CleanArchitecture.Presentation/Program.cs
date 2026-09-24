@@ -31,7 +31,6 @@ if (isRunningAsTheEntryPoint)
 
 app.UseExceptionHandler();
 
-// Authentication must populate HttpContext.User before authorization evaluates endpoint policies.
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -39,5 +38,4 @@ app.MapApi();
 
 app.Run();
 
-/// <summary>Exposes the implicit Program class to <c>WebApplicationFactory&lt;Program&gt;</c> in tests.</summary>
 public partial class Program;

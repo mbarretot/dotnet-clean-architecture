@@ -5,7 +5,6 @@ using Shouldly;
 
 namespace CleanArchitecture.IntegrationTests.Orders;
 
-/// <summary>Exercises the real JwtBearer handler and the real <c>orders:write</c> scope policy end to end.</summary>
 [Collection(IntegrationTestCollection.Name)]
 public sealed class OrderAuthorizationTests(ApiFactory factory) : IntegrationTest(factory)
 {

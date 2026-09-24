@@ -5,7 +5,6 @@ using Shouldly;
 
 namespace CleanArchitecture.Application.UnitTests.Domain.Orders;
 
-/// <summary>The order owns its lines: every invariant is enforced by <see cref="Order.Place"/> and <see cref="Order.Cancel"/>.</summary>
 public class OrderTests
 {
     private const string CustomerId = "customer-1";

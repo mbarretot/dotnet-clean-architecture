@@ -1,6 +1,5 @@
 namespace CleanArchitecture.SharedKernel.Results;
 
-/// <summary>Outcome of an operation that avoids exceptions for control flow.</summary>
 public class Result
 {
     protected internal Result(bool isSuccess, Error error)
@@ -33,7 +32,6 @@ public class Result
 
     public static Result<TValue> Failure<TValue>(Error error) => new(default, false, error);
 
-    /// <summary>Wraps a null value as <see cref="Error.NullValue"/> instead of success.</summary>
     public static Result<TValue> Create<TValue>(TValue? value) =>
         value is null ? Failure<TValue>(Error.NullValue) : Success(value);
 

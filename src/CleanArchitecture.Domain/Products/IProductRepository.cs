@@ -1,6 +1,5 @@
 namespace CleanArchitecture.Domain.Products;
 
-/// <summary>Changes are committed separately, through <see cref="SharedKernel.Abstractions.IUnitOfWork"/>.</summary>
 public interface IProductRepository
 {
     Task<Product?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);

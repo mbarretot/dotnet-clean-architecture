@@ -7,13 +7,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace CleanArchitecture.Infrastructure.Persistence;
 
-/// <summary>Auditing and domain-event dispatch live in interceptors, not here.</summary>
 public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : DbContext(options)
 {
-    /// <summary>
-    /// Name of the global query filter that hides soft-deleted rows. Bypass it for a single query with
-    /// <c>IgnoreQueryFilters([ApplicationDbContext.SoftDeleteFilter])</c>, leaving any other named filter active.
-    /// </summary>
     public const string SoftDeleteFilter = "SoftDelete";
 
     public DbSet<Product> Products => Set<Product>();
@@ -26,8 +21,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 
         if (!Database.IsNpgsql())
         {
-            // SQLite (used by repository and interceptor tests) cannot ORDER BY a DateTimeOffset stored as text; the
-            // binary form sorts correctly and round-trips the offset. PostgreSQL keeps its native timestamptz.
+            // SQLite cannot ORDER BY a text DateTimeOffset; the binary form sorts correctly.
             configurationBuilder.Properties<DateTimeOffset>().HaveConversion<DateTimeOffsetToBinaryConverter>();
         }
 
@@ -48,11 +42,6 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
         base.OnModelCreating(modelBuilder);
     }
 
-    /// <summary>
-    /// Adds an xmin shadow property for optimistic concurrency to every <see cref="AggregateRoot"/>: the aggregate is the
-    /// consistency boundary, so that is where concurrent writes are detected. Npgsql-only since SQLite (used by
-    /// interceptor tests) has no equivalent.
-    /// </summary>
     private static void ApplyConcurrencyToken(ModelBuilder modelBuilder)
     {
         var aggregateRootTypes = modelBuilder.Model.GetEntityTypes()
@@ -73,7 +62,6 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
         }
     }
 
-    /// <summary>Adds <c>entity => !entity.IsDeleted</c> to every <see cref="ISoftDeletable"/> root entity type, so new ones need no extra wiring.</summary>
     private static void ApplySoftDeleteFilter(ModelBuilder modelBuilder)
     {
         var softDeletableTypes = modelBuilder.Model.GetEntityTypes()

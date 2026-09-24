@@ -10,7 +10,6 @@ public class Result<TValue> : Result
         _value = value;
     }
 
-    /// <summary>Throws if accessed on a failed result.</summary>
     public TValue Value => IsSuccess
         ? _value!
         : throw new InvalidOperationException("The value of a failure result cannot be accessed.");

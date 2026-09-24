@@ -8,7 +8,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CleanArchitecture.Infrastructure.UnitTests.Persistence.Interceptors;
 
-/// <summary>SQLite, not the EF Core "InMemory" provider, so interceptors and constraints are exercised for real.</summary>
 public sealed class SqliteApplicationDbContextFixture : IDisposable
 {
     private readonly SqliteConnection _connection = new("Data Source=:memory:");

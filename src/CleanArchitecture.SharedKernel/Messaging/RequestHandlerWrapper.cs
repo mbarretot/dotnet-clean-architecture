@@ -2,7 +2,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace CleanArchitecture.SharedKernel.Messaging;
 
-/// <summary>Non-generic gateway so <see cref="Sender"/> can cache a closed wrapper without reflecting per call.</summary>
 internal abstract class RequestHandlerWrapperBase
 {
     public abstract Task<object?> Handle(object request, IServiceProvider serviceProvider, CancellationToken cancellationToken);

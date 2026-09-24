@@ -4,7 +4,6 @@ using Shouldly;
 
 namespace CleanArchitecture.ArchitectureTests;
 
-/// <summary>Every Domain repository port must have a sealed Infrastructure implementation.</summary>
 public class RepositoryConventionTests
 {
     private static readonly System.Reflection.Assembly DomainAssembly = typeof(IProductRepository).Assembly;

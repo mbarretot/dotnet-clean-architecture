@@ -7,9 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Class libraries needing ASP.NET Core hosting APIs (IHttpContextAccessor) reference the shared
-         framework instead of the old Microsoft.AspNetCore.Http.Abstractions NuGet package, which is
-         obsolete/conflict-prone on .NET Core 3+. -->
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 

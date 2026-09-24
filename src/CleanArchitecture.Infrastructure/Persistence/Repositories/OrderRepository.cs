@@ -3,10 +3,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CleanArchitecture.Infrastructure.Persistence.Repositories;
 
-/// <summary>
-/// Always loads the whole aggregate (lines included) so its invariants can be enforced in memory. Mutating members only
-/// stage changes; nothing persists until <see cref="SharedKernel.Abstractions.IUnitOfWork.SaveChangesAsync"/>.
-/// </summary>
 public sealed class OrderRepository(ApplicationDbContext dbContext) : IOrderRepository
 {
     public Task<Order?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>

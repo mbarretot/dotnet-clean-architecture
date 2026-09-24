@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace CleanArchitecture.Infrastructure.Persistence.Configurations;
 
-/// <summary><see cref="Sku"/> is a converted column, <see cref="Money"/> an owned type; both have private ctors whose parameter names match their properties, so EF Core's constructor binding materializes them with no reflection helpers.</summary>
 public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
 {
     private const string IsDeletedColumn = "is_deleted";
@@ -29,8 +28,6 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
             .HasMaxLength(64)
             .IsRequired();
 
-        // Unique among non-deleted products only, so a soft-deleted product's SKU can be reused. The filter is
-        // portable SQL (PostgreSQL and SQLite) and matches the soft-delete query filter the SKU existence check runs under.
         builder.HasIndex(product => product.Sku)
             .IsUnique()
             .HasFilter($"{IsDeletedColumn} = FALSE");
@@ -50,7 +47,6 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
 
         builder.Navigation(product => product.Price).IsRequired();
 
-        // Explicit column name: the SKU index filter references it, and must not depend on the naming convention in use.
         builder.Property(product => product.IsDeleted)
             .HasColumnName(IsDeletedColumn)
             .IsRequired();
@@ -59,7 +55,6 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(product => product.CreatedBy).HasMaxLength(256).IsRequired();
         builder.Property(product => product.ModifiedBy).HasMaxLength(256);
 
-        // xmin concurrency token is configured in ApplicationDbContext instead (provider-conditional).
         builder.Ignore(product => product.DomainEvents);
     }
 }

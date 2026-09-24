@@ -4,7 +4,6 @@ using Shouldly;
 
 namespace CleanArchitecture.ArchitectureTests;
 
-/// <summary>Handlers must be sealed and named "*Handler".</summary>
 public class HandlerConventionTests
 {
     private static readonly Type[] OpenHandlerInterfaces =

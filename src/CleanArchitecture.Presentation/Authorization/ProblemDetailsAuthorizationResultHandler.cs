@@ -4,15 +4,6 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace CleanArchitecture.Presentation.Authorization;
 
-/// <summary>
-/// Turns the empty 401/403 left by authentication handlers into RFC 9457 problem responses written by
-/// <see cref="IProblemDetailsService"/>, so they carry the same <c>type</c>, <c>title</c> and <c>traceId</c> as every
-/// other error. It wraps the default handler rather than hooking <c>JwtBearerEvents</c>: the authorization middleware
-/// is the single place every policy outcome passes through (explicit policies and the fallback policy alike), it stays
-/// scheme-agnostic, and letting the scheme challenge first keeps its <c>WWW-Authenticate</c> header (including
-/// <c>error="invalid_token"</c>) intact. The body never includes the authentication failure, so token validation
-/// details are not leaked.
-/// </summary>
 public sealed class ProblemDetailsAuthorizationResultHandler(IProblemDetailsService problemDetailsService)
     : IAuthorizationMiddlewareResultHandler
 {
@@ -31,7 +22,6 @@ public sealed class ProblemDetailsAuthorizationResultHandler(IProblemDetailsServ
             return;
         }
 
-        // Only decorate a bare 401/403: a scheme that redirected or already wrote a body keeps its own response.
         var status = context.Response.StatusCode;
         if (context.Response.HasStarted
             || status is not (StatusCodes.Status401Unauthorized or StatusCodes.Status403Forbidden))

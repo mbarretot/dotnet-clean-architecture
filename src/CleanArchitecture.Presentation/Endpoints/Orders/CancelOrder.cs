@@ -5,7 +5,6 @@ using CleanArchitecture.SharedKernel.Messaging;
 
 namespace CleanArchitecture.Presentation.Endpoints.Orders;
 
-/// <summary><c>POST /api/orders/{id}/cancel</c> — cancels one of the caller's orders.</summary>
 public sealed class CancelOrder : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder endpoints)

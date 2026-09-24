@@ -7,7 +7,6 @@ using Shouldly;
 
 namespace CleanArchitecture.Presentation.UnitTests.Authorization;
 
-/// <summary>Secure by default: an endpoint without authorization metadata must still require an authenticated user.</summary>
 public sealed class FallbackPolicyTests
 {
     [Fact]

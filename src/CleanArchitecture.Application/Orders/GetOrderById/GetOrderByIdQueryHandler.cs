@@ -5,7 +5,6 @@ using CleanArchitecture.SharedKernel.Results;
 
 namespace CleanArchitecture.Application.Orders.GetOrderById;
 
-/// <summary>Another customer's order reads as not found, so its existence is never revealed.</summary>
 public sealed class GetOrderByIdQueryHandler(IOrderRepository orderRepository, ICurrentUser currentUser)
     : IQueryHandler<GetOrderByIdQuery, OrderResponse>
 {

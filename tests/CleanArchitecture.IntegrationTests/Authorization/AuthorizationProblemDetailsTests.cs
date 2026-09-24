@@ -8,10 +8,6 @@ using Shouldly;
 
 namespace CleanArchitecture.IntegrationTests.Authorization;
 
-/// <summary>
-/// 401 and 403 produced by the real JwtBearer handler and the real policies are RFC 9457 problem responses, shaped
-/// like every other error the API returns, without dropping the <c>WWW-Authenticate</c> challenge.
-/// </summary>
 [Collection(IntegrationTestCollection.Name)]
 public sealed class AuthorizationProblemDetailsTests(ApiFactory factory) : IntegrationTest(factory)
 {

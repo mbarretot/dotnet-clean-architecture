@@ -1,10 +1,6 @@
 version: 2
 
-# Weekly, grouped version updates to keep PR noise low. Security updates are not affected by
-# these groups or limits: Dependabot opens them as soon as an advisory is published.
 updates:
-  # NuGet with Central Package Management: Dependabot reads and bumps Directory.Packages.props
-  # at the repository root.
   - package-ecosystem: nuget
     directory: /
     schedule:
@@ -19,7 +15,6 @@ updates:
         patterns:
           - "Aspire.*"
       microsoft:
-        # ASP.NET Core, EF Core and Microsoft.Extensions.* ship together; bump them as one unit.
         patterns:
           - "Microsoft.*"
         exclude-patterns:
@@ -39,7 +34,6 @@ updates:
           - "Respawn"
           - "Testcontainers*"
       minor-and-patch:
-        # Everything else (FluentValidation, Npgsql, Scalar, ...) in one PR unless it is a major.
         update-types:
           - minor
           - patch
@@ -68,7 +62,6 @@ updates:
       prefix: chore
       include: scope
 
-  # postgres and keycloak images in the root docker-compose.yml.
   - package-ecosystem: docker-compose
     directory: /
     schedule:

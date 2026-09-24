@@ -5,7 +5,6 @@ using Microsoft.Extensions.Logging;
 
 namespace CleanArchitecture.Application.Behaviors;
 
-/// <summary>Logs only the request's type name, never its payload, which may contain personal data.</summary>
 public sealed class LoggingBehavior<TRequest, TResponse>(ILogger<LoggingBehavior<TRequest, TResponse>> logger)
     : IPipelineBehavior<TRequest, TResponse>
     where TRequest : IRequest<TResponse>

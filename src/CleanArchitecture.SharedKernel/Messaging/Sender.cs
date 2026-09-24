@@ -3,7 +3,6 @@ using CleanArchitecture.SharedKernel.Results;
 
 namespace CleanArchitecture.SharedKernel.Messaging;
 
-/// <summary>Caches the resolved wrapper per request type so only the first dispatch pays for reflection.</summary>
 public sealed class Sender(IServiceProvider serviceProvider) : ISender
 {
     private static readonly ConcurrentDictionary<Type, RequestHandlerWrapperBase> Wrappers = new();

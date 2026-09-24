@@ -5,7 +5,6 @@ on:
     branches: [main]
   push:
     branches: [main]
-  # Lets cd.yml call this workflow as its build/test gate instead of duplicating it.
   workflow_call:
 
 permissions:
@@ -29,9 +28,6 @@ jobs:
         with:
           global-json-file: global.json
           cache: true
-          # No packages.lock.json in this repo (Central Package Management via
-          # Directory.Packages.props instead), so the cache key is derived from the CPM file
-          # and every csproj rather than setup-dotnet's default lock-file lookup.
           cache-dependency-path: |
             Directory.Packages.props
             **/*.csproj
@@ -40,9 +36,8 @@ jobs:
         run: dotnet restore CleanArchitecture.slnx
 
       - name: Check for vulnerable NuGet packages
-        # `dotnet list package --vulnerable` exits 0 even when it finds advisories, and its text
-        # output is localized, so the gate parses the JSON report (top-level and transitive).
         run: |
+          # The command exits 0 on findings, so the JSON report is parsed.
           dotnet list CleanArchitecture.slnx package --vulnerable --include-transitive --format json \
             > vulnerable-packages.json
           findings=$(jq -r '
@@ -69,11 +64,6 @@ jobs:
           --coverage-settings CodeCoverage.config
           --results-directory TestResults
           | tee test-output.log
-        # Test projects run on Microsoft.Testing.Platform (global.json "test.runner"), so MTP
-        # options are passed directly: no VSTest `--collect`/`--logger`, no `--` separator.
-        # Coverage comes from Microsoft.Testing.Extensions.CodeCoverage, referenced by every test
-        # project via Directory.Build.props; test assemblies are excluded by default and
-        # CodeCoverage.config drops EF migrations and generated code.
 
       - name: Upload test results log
         if: always()
@@ -154,8 +144,6 @@ jobs:
       - name: terraform validate
         run: terraform validate
 
-  # Single required-status-check-friendly job: point branch protection at this instead of all
-  # three job names individually.
   ci-status:
     name: CI
     if: always()

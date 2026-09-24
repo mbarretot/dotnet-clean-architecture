@@ -5,10 +5,6 @@ using CleanArchitecture.SharedKernel.Results;
 
 namespace CleanArchitecture.Application.Products.DeleteProduct;
 
-/// <summary>
-/// Soft-deletes to preserve history and referential integrity for past orders. Deleted products are hidden
-/// by a global query filter, so deleting one twice finds nothing and returns not found.
-/// </summary>
 public sealed class DeleteProductCommandHandler(IProductRepository productRepository, IUnitOfWork unitOfWork)
     : ICommandHandler<DeleteProductCommand>
 {

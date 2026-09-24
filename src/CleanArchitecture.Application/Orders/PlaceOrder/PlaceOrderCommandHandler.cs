@@ -7,11 +7,6 @@ using CleanArchitecture.SharedKernel.Results;
 
 namespace CleanArchitecture.Application.Orders.PlaceOrder;
 
-/// <summary>
-/// Coordinates two aggregates: reads each <see cref="Product"/> only to snapshot its name and price, then lets
-/// <see cref="Order.Place"/> enforce the order's own invariants. Only the new order is written, in one SaveChanges.
-/// Soft-deleted products are invisible to the repository, so they cannot be ordered.
-/// </summary>
 public sealed class PlaceOrderCommandHandler(
     IOrderRepository orderRepository,
     IProductRepository productRepository,

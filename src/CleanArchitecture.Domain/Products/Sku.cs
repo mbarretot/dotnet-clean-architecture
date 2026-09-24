@@ -3,7 +3,6 @@ using CleanArchitecture.SharedKernel.Results;
 
 namespace CleanArchitecture.Domain.Products;
 
-/// <summary>Normalized (trimmed, upper-cased) on <see cref="Create"/>.</summary>
 public sealed class Sku : ValueObject
 {
     private Sku(string value)

@@ -1,6 +1,5 @@
 namespace CleanArchitecture.SharedKernel.Results;
 
-/// <summary>Aggregates all failed results' errors into one.</summary>
 public sealed record ValidationError : Error
 {
     private ValidationError(Error[] errors)

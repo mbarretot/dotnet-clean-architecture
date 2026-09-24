@@ -14,10 +14,7 @@
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.12" />
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
     <PackageVersion Include="Microsoft.Extensions.ApiDescription.Server" Version="10.0.12" />
-    <!-- Microsoft.EntityFrameworkCore and .Relational are only transitive dependencies (of Npgsql.EFCore.PostgreSQL
-         and Microsoft.EntityFrameworkCore.Design); pinned explicitly so every project resolves the same version
-         instead of Presentation floating down to Npgsql's minimum-supported "[10.0.4, 11.0.0)" bound while
-         Infrastructure resolves the newer version Design requires. -->
+    <!-- Pinned so every project resolves the same transitive EF Core version. -->
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.12" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

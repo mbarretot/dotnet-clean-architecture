@@ -5,7 +5,6 @@ using Shouldly;
 
 namespace CleanArchitecture.ArchitectureTests;
 
-/// <summary>Commands/queries must be sealed records — no shared mutable state across pipeline behaviors.</summary>
 public class CommandQueryConventionTests
 {
     private static readonly Type[] OpenMessageInterfaces =
@@ -44,7 +43,6 @@ public class CommandQueryConventionTests
         nonRecords.ShouldBeEmpty(string.Join(", ", nonRecords.Select(type => type.FullName)));
     }
 
-    /// <summary>Every record class has a compiler-synthesized <c>&lt;Clone&gt;$</c>; no other type does.</summary>
     private static bool IsRecord(Type type) =>
         type.GetMethod("<Clone>$", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance) is not null;
 }

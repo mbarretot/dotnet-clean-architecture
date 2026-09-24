@@ -11,7 +11,6 @@ using Shouldly;
 
 namespace CleanArchitecture.Presentation.UnitTests.Authorization;
 
-/// <summary>Builds the real endpoint metadata so a new order endpoint cannot silently ship without authorization.</summary>
 public sealed class OrderEndpointAuthorizationTests : IAsyncLifetime
 {
     private WebApplication _app = null!;

@@ -105,8 +105,7 @@ dotnet_naming_rule.members_should_be_pascal_case.style = pascal_case_style
 
 dotnet_naming_symbols.member_symbol.applicable_kinds = property, method, event
 
-# Order matters: the more specific "static private field" rule must be evaluated before the general
-# "private field" rule, or the general rule would match static fields first and force the wrong style.
+# Must precede the general private field rule.
 dotnet_naming_rule.static_private_fields_should_be_pascal_case.severity = error
 dotnet_naming_rule.static_private_fields_should_be_pascal_case.symbols = static_private_field_symbol
 dotnet_naming_rule.static_private_fields_should_be_pascal_case.style = pascal_case_style
@@ -163,15 +162,10 @@ csharp_space_between_method_call_parameter_list_parentheses = false
 dotnet_diagnostic.CA1032.severity = suggestion
 dotnet_diagnostic.CA1062.severity = none
 dotnet_diagnostic.CA2007.severity = none
-# This is an internal reference solution, not a public multi-language NuGet package: CLS/keyword-collision
-# naming rules would force worse names (Error, RequestHandlerDelegate, DomainEventHandler, "next") for no benefit.
 dotnet_diagnostic.CA1716.severity = none
 dotnet_diagnostic.CA1711.severity = none
 
 [tests/**/*.cs]
-# Test names may use underscores for readability (e.g. Method_Scenario_Expected).
 dotnet_diagnostic.CA1707.severity = none
-# Test assemblies do not need public API documentation.
 dotnet_diagnostic.CS1591.severity = none
-# Test doubles and fixtures may expose internal state for assertions.
 dotnet_diagnostic.CA1051.severity = none

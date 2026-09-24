@@ -1,6 +1,5 @@
 namespace CleanArchitecture.SharedKernel.Results;
 
-/// <summary>Lets consumers (e.g. HTTP) map an error to the right response.</summary>
 public enum ErrorType
 {
     Failure = 0,

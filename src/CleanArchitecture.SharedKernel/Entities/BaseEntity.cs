@@ -1,6 +1,5 @@
 namespace CleanArchitecture.SharedKernel.Entities;
 
-/// <summary>Compared by <see cref="Id"/>, not by state.</summary>
 public abstract class BaseEntity : IAuditable, IEquatable<BaseEntity>
 {
     protected BaseEntity(Guid id)

@@ -130,7 +130,6 @@ public sealed class OpenApiDocumentTests(ApiFactory factory) : IntegrationTest(f
         .UseSetting("OpenApi:OAuth2:ClientId", "scalar"));
 }
 
-/// <summary>Minimal reader over the served OpenAPI JSON; enough to assert per-operation security and responses.</summary>
 internal sealed class OpenApiDocument : IDisposable
 {
     public const string Path = "/openapi/v1.json";
@@ -182,7 +181,6 @@ internal readonly record struct OpenApiOperation(JsonElement Element)
     public bool DeclaresResponse(string statusCode) =>
         Element.TryGetProperty("responses", out var responses) && responses.TryGetProperty(statusCode, out _);
 
-    /// <summary>The <c>$ref</c> of the response body schema for <paramref name="mediaType"/>, or null when absent.</summary>
     public string? ResponseSchemaReference(string statusCode, string mediaType) =>
         Element.TryGetProperty("responses", out var responses)
         && responses.TryGetProperty(statusCode, out var response)

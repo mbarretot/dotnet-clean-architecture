@@ -5,7 +5,6 @@ using CleanArchitecture.SharedKernel.Messaging;
 
 namespace CleanArchitecture.Presentation.Endpoints.Products;
 
-/// <summary><c>DELETE /api/products/{id}</c> — soft-deletes a product; afterwards it reads as not found.</summary>
 public sealed class DeleteProduct : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder endpoints)

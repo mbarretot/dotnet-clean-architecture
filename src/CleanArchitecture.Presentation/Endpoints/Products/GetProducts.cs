@@ -6,7 +6,6 @@ using CleanArchitecture.SharedKernel.Results;
 
 namespace CleanArchitecture.Presentation.Endpoints.Products;
 
-/// <summary><c>GET /api/products</c> — returns a page of products.</summary>
 public sealed class GetProducts : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder endpoints)

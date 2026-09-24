@@ -52,12 +52,9 @@ public sealed class DispatchDomainEventsInterceptorTests : IDisposable
 
         _publisher.ClearReceivedCalls();
 
-        // Marking the aggregate modified without calling a domain method raises no event.
         context.Products.Update(product);
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        // Publish<T> is generic, so DidNotReceive().Publish<T>(...) would only check one closed instantiation;
-        // asserting no calls at all is the reliable way to check nothing was published.
         _publisher.ReceivedCalls().ShouldBeEmpty();
     }
 }

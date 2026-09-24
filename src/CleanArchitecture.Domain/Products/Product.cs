@@ -15,7 +15,6 @@ public sealed class Product : AggregateRoot, ISoftDeletable
         Sku = sku;
     }
 
-    /// <summary>For EF Core only: <see cref="Price"/> is an owned-type navigation, which constructor binding can't populate.</summary>
     private Product()
     {
         Name = string.Empty;
@@ -38,7 +37,6 @@ public sealed class Product : AggregateRoot, ISoftDeletable
 
     public string? DeletedBy { get; private set; }
 
-    /// <summary>Raises <see cref="ProductCreatedDomainEvent"/>.</summary>
     public static Result<Product> Create(string name, string description, Money price, Sku sku)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -52,7 +50,6 @@ public sealed class Product : AggregateRoot, ISoftDeletable
         return product;
     }
 
-    /// <summary>Raises <see cref="ProductUpdatedDomainEvent"/>.</summary>
     public Result Update(string name, string description, Money price)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -69,10 +66,6 @@ public sealed class Product : AggregateRoot, ISoftDeletable
         return Result.Success();
     }
 
-    /// <summary>
-    /// Soft-deletes the product and raises <see cref="ProductDeletedDomainEvent"/>; idempotent.
-    /// <see cref="DeletedOnUtc"/> and <see cref="DeletedBy"/> are stamped by persistence, like the audit columns.
-    /// </summary>
     public void Delete()
     {
         if (IsDeleted)

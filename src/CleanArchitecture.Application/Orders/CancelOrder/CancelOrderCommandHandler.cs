@@ -6,7 +6,6 @@ using CleanArchitecture.SharedKernel.Results;
 
 namespace CleanArchitecture.Application.Orders.CancelOrder;
 
-/// <summary>Another customer's order reads as not found, so its existence is never revealed.</summary>
 public sealed class CancelOrderCommandHandler(
     IOrderRepository orderRepository,
     ICurrentUser currentUser,
@@ -29,7 +28,6 @@ public sealed class CancelOrderCommandHandler(
 
         order.ModifiedAt = dateTimeProvider.UtcNow;
 
-        // The loaded aggregate is change-tracked, so saving persists the new status without an explicit update.
         await unitOfWork.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         return Result.Success();

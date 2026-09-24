@@ -6,7 +6,6 @@ using Shouldly;
 
 namespace CleanArchitecture.ArchitectureTests;
 
-/// <summary>The solution ships its own mediator; MediatR must never be referenced, even transitively.</summary>
 public class MediatRTests
 {
     public static TheoryData<System.Reflection.Assembly> Assemblies => new()

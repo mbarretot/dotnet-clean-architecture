@@ -4,7 +4,6 @@ using Microsoft.Extensions.Logging;
 
 namespace CleanArchitecture.Application.Products.EventHandlers;
 
-/// <summary>Sample handler; a real one might send a notification or update a read model.</summary>
 public sealed class ProductCreatedDomainEventHandler(ILogger<ProductCreatedDomainEventHandler> logger)
     : DomainEventHandler<ProductCreatedDomainEvent>
 {

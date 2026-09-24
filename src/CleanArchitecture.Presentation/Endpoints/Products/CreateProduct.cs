@@ -19,7 +19,6 @@ public sealed record CreateProductRequest
     public required string Sku { get; init; }
 }
 
-/// <summary><c>POST /api/products</c> — creates a new product.</summary>
 public sealed class CreateProduct : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder endpoints)

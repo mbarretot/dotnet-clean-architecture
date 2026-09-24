@@ -5,7 +5,6 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace CleanArchitecture.Infrastructure.Persistence.Configurations;
 
-/// <summary><see cref="Money"/> is an owned type, mapped to the snapshot columns <c>unit_price_amount</c>/<c>unit_price_currency</c>.</summary>
 public sealed class OrderLineConfiguration : IEntityTypeConfiguration<OrderLine>
 {
     public void Configure(EntityTypeBuilder<OrderLine> builder)
@@ -14,7 +13,6 @@ public sealed class OrderLineConfiguration : IEntityTypeConfiguration<OrderLine>
 
         builder.HasKey(line => line.Id);
 
-        // Ids are assigned by the domain; without this EF would treat a new line on a loaded order as an existing row.
         builder.Property(line => line.Id).ValueGeneratedNever();
 
         builder.Property(line => line.ProductId).IsRequired();

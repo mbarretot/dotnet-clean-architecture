@@ -6,11 +6,6 @@ using Microsoft.OpenApi;
 
 namespace CleanArchitecture.Presentation.OpenApi;
 
-/// <summary>
-/// When <see cref="OpenApiOAuth2Options"/> is configured, declares an OAuth 2.0 Authorization Code scheme and offers it
-/// as an alternative to the bearer scheme on every protected operation. Both yield the same JWT; this one only tells
-/// tooling (Scalar) how to obtain it. Must run after <see cref="BearerSecuritySchemeTransformer"/>.
-/// </summary>
 internal sealed class OAuth2SecuritySchemeTransformer(IOptions<OpenApiOAuth2Options> options)
     : IOpenApiDocumentTransformer, IOpenApiOperationTransformer
 {
@@ -61,7 +56,6 @@ internal sealed class OAuth2SecuritySchemeTransformer(IOptions<OpenApiOAuth2Opti
             return Task.CompletedTask;
         }
 
-        // A second requirement object means "either scheme" (OpenAPI ORs the entries of the security array).
         operation.Security!.Add(new OpenApiSecurityRequirement
         {
             [new OpenApiSecuritySchemeReference(SchemeId, context.Document)] = [],

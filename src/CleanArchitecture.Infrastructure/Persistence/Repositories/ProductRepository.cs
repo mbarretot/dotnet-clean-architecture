@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CleanArchitecture.Infrastructure.Persistence.Repositories;
 
-/// <summary>Mutating members only stage changes; nothing persists until <see cref="SharedKernel.Abstractions.IUnitOfWork.SaveChangesAsync"/>.</summary>
 public sealed class ProductRepository(ApplicationDbContext dbContext) : IProductRepository
 {
     public Task<Product?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>

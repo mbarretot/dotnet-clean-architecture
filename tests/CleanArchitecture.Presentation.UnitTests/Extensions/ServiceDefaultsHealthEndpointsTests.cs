@@ -8,7 +8,6 @@ using Shouldly;
 
 namespace CleanArchitecture.Presentation.UnitTests.Extensions;
 
-/// <summary>Container Apps probes hit /alive and /health in Production, so the endpoints must exist outside Development.</summary>
 public sealed class ServiceDefaultsHealthEndpointsTests
 {
     [Theory]

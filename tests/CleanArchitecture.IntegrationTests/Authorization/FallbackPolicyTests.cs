@@ -12,10 +12,6 @@ using Shouldly;
 
 namespace CleanArchitecture.IntegrationTests.Authorization;
 
-/// <summary>
-/// Proves the fallback policy protects an endpoint that declares no authorization metadata at all. The endpoint is
-/// registered only in this test host, through the same <see cref="IEndpoint"/> discovery the production endpoints use.
-/// </summary>
 [Collection(IntegrationTestCollection.Name)]
 public sealed class FallbackPolicyTests(ApiFactory factory) : IntegrationTest(factory)
 {

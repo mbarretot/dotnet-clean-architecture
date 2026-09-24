@@ -1,13 +1,3 @@
-# Standalone "just Docker, no Aspire" local option.
-# For the Aspire-orchestrated alternative (dashboard, OTel out of the box), use `aspire run`
-# from the repository root instead (requires Docker for the Postgres container either way).
-#
-# Usage:
-#   docker compose up --build
-#   API:       http://localhost:8080
-#   Scalar:    http://localhost:8080/scalar (Development environment only)
-#   Keycloak:  http://localhost:8180 (admin console: admin / admin, DEV ONLY)
-
 services:
   postgres:
     image: postgres:17
@@ -24,18 +14,13 @@ services:
       retries: 10
     restart: unless-stopped
 
-  # Local identity provider. The realm (clients, scopes, test user) is imported from deploy/keycloak on startup.
   keycloak:
     image: quay.io/keycloak/keycloak:26.6
     command: ["start-dev", "--import-realm"]
     environment:
-      # DEV ONLY credentials for the admin console.
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
       KC_HEALTH_ENABLED: "true"
-      # Frontend URL: tokens always carry iss=http://localhost:8180/realms/clean-architecture, whether requested from
-      # the host or from inside the network. Backchannel endpoints (JWKS, token) keep the caller's host, so the API
-      # container can download signing keys from http://keycloak:8080.
       KC_HOSTNAME: http://localhost:8180
       KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
     volumes:
@@ -43,7 +28,7 @@ services:
     ports:
       - "8180:8080"
     healthcheck:
-      # The image ships no curl/wget: probe the management port's readiness endpoint over bash's /dev/tcp.
+      # The image has no curl/wget.
       test:
         - CMD-SHELL
         - >-
@@ -63,13 +48,10 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__Database: "Host=postgres;Port=5432;Database=cleanarchitecture;Username=postgres;Password=postgres"
-      # Signing keys are discovered through the internal network name; issuer and audience are validated against the
-      # host-facing URL tokens are issued with. Plain HTTP metadata is acceptable only for this local setup.
       Authentication__Schemes__Bearer__Authority: http://keycloak:8080/realms/clean-architecture
       Authentication__Schemes__Bearer__ValidIssuers__0: http://localhost:8180/realms/clean-architecture
       Authentication__Schemes__Bearer__ValidAudiences__0: clean-architecture-api
       Authentication__Schemes__Bearer__RequireHttpsMetadata: "false"
-      # Scalar login (Authorization Code + PKCE): URLs the developer's browser opens, hence localhost.
       OpenApi__OAuth2__AuthorizationUrl: http://localhost:8180/realms/clean-architecture/protocol/openid-connect/auth
       OpenApi__OAuth2__TokenUrl: http://localhost:8180/realms/clean-architecture/protocol/openid-connect/token
       OpenApi__OAuth2__ClientId: scalar

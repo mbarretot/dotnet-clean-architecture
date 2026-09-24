@@ -1,6 +1,5 @@
 namespace CleanArchitecture.SharedKernel.Entities;
 
-/// <summary>Compared by component values, not by identity.</summary>
 public abstract class ValueObject : IEquatable<ValueObject>
 {
     public static bool operator ==(ValueObject? left, ValueObject? right) =>
@@ -23,6 +22,5 @@ public abstract class ValueObject : IEquatable<ValueObject>
     public override int GetHashCode() =>
         GetEqualityComponents().Aggregate(0, (hash, component) => HashCode.Combine(hash, component));
 
-    /// <summary>Order must be stable: it drives both equality and hash code.</summary>
     protected abstract IEnumerable<object?> GetEqualityComponents();
 }

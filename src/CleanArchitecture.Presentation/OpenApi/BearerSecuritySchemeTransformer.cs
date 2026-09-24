@@ -10,13 +10,6 @@ using Microsoft.OpenApi;
 
 namespace CleanArchitecture.Presentation.OpenApi;
 
-/// <summary>
-/// Declares the JWT bearer scheme so Scalar can attach a token, and marks only operations whose endpoint actually
-/// requires authorization — anonymous endpoints stay unmarked instead of inheriting a document-wide requirement.
-/// The effective policy is resolved the way the authorization middleware does it, so endpoints protected only by the
-/// fallback policy are documented too. Protected operations declare 401; those whose policy demands more than an
-/// authenticated user (scopes, roles) also declare 403. Both carry an <c>application/problem+json</c> body.
-/// </summary>
 internal sealed class BearerSecuritySchemeTransformer(
     IAuthenticationSchemeProvider authenticationSchemeProvider,
     IAuthorizationPolicyProvider authorizationPolicyProvider)
@@ -80,7 +73,6 @@ internal sealed class BearerSecuritySchemeTransformer(
         }
     }
 
-    /// <summary>Matches what ProblemDetailsAuthorizationResultHandler writes at runtime.</summary>
     private static OpenApiResponse ProblemResponse(string description, IOpenApiSchema schema) => new()
     {
         Description = description,
@@ -90,10 +82,6 @@ internal sealed class BearerSecuritySchemeTransformer(
         },
     };
 
-    /// <summary>
-    /// Registers the <see cref="ProblemDetails"/> component (unless an endpoint's <c>ProducesProblem</c> already did)
-    /// and references it, so an operation protected only by the fallback policy never points at a missing schema.
-    /// </summary>
     private static async Task<IOpenApiSchema> GetProblemDetailsSchemaReferenceAsync(
         OpenApiOperationTransformerContext context, CancellationToken cancellationToken)
     {
@@ -111,10 +99,6 @@ internal sealed class BearerSecuritySchemeTransformer(
         return new OpenApiSchemaReference(ProblemDetailsSchemaId, document);
     }
 
-    /// <summary>
-    /// Mirrors the authorization middleware: <see cref="IAllowAnonymous"/> wins, then explicit endpoint policies, then
-    /// the fallback policy. <see langword="null"/> means the endpoint is public.
-    /// </summary>
     private async Task<AuthorizationPolicy?> GetEffectivePolicyAsync(IList<object> endpointMetadata)
     {
         if (endpointMetadata.OfType<IAllowAnonymous>().Any())

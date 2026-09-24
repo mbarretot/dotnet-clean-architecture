@@ -18,7 +18,6 @@ public sealed record PlaceOrderLineRequest
     public required int Quantity { get; init; }
 }
 
-/// <summary><c>POST /api/orders</c> — places an order for the caller.</summary>
 public sealed class PlaceOrder : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder endpoints)

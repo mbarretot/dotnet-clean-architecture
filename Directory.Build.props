@@ -19,8 +19,6 @@
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
 
-  <!-- Every test project gets Microsoft Testing Platform code coverage (dotnet test with the coverage switch).
-       Items are evaluated after all properties, so this also sees IsTestProject set by packages. -->
   <ItemGroup Condition="'$(IsTestProject)' == 'true'">
     <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" />
   </ItemGroup>

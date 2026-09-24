@@ -13,14 +13,12 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace CleanArchitecture.Infrastructure;
 
-/// <summary>OpenTelemetry is deliberately not configured here — Aspire's ServiceDefaults owns it, avoiding double-registered exporters.</summary>
 public static class DependencyInjection
 {
     public const string DatabaseConnectionStringName = "Database";
 
     public const string DatabaseHealthCheckName = "database";
 
-    /// <summary>Deliberately not "live": a database outage must pull the replica out of traffic, not restart it.</summary>
     public const string ReadinessTag = "ready";
 
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
@@ -32,7 +30,6 @@ public static class DependencyInjection
             ?? throw new InvalidOperationException(
                 $"Connection string '{DatabaseConnectionStringName}' was not found under 'ConnectionStrings'.");
 
-        // Scoped, not Singleton: the interceptor depends on scoped ICurrentUser (captive-dependency risk otherwise).
         services.AddScoped<AuditableEntitySaveChangesInterceptor>();
         services.AddScoped<DispatchDomainEventsInterceptor>();
 

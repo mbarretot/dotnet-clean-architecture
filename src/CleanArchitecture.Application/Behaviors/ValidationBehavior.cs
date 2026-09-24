@@ -5,7 +5,6 @@ using FluentValidation;
 
 namespace CleanArchitecture.Application.Behaviors;
 
-/// <summary>Short-circuits with a failed <see cref="ValidationError"/> result instead of throwing.</summary>
 public sealed class ValidationBehavior<TRequest, TResponse>(IEnumerable<IValidator<TRequest>> validators)
     : IPipelineBehavior<TRequest, TResponse>
     where TRequest : IRequest<TResponse>
@@ -39,7 +38,6 @@ public sealed class ValidationBehavior<TRequest, TResponse>(IEnumerable<IValidat
         return CreateFailureResult(validationError);
     }
 
-    /// <summary>Compiles the failure factory once per closed <typeparamref name="TResponse"/>, avoiding per-call reflection.</summary>
     private static Func<Error, TResponse> BuildFailureFactory()
     {
         if (typeof(TResponse) == typeof(Result))

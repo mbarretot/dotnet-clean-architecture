@@ -6,7 +6,6 @@ on:
   push:
     branches: [main]
   schedule:
-    # Weekly re-scan so newly published CodeQL queries run against unchanged code.
     - cron: "27 4 * * 1"
 
 permissions:
@@ -29,13 +28,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # C# uses build-mode "manual": the solution builds in about a minute with the pinned SDK,
-          # and a real compilation gives CodeQL the full semantic model (resolved references and
-          # source-generated code such as OpenAPI/options generators), which build-mode "none"
-          # only approximates and can miss data flow through.
           - language: csharp
             build-mode: manual
-          # Workflow files (injection, over-broad permissions, untrusted checkout) need no build.
           - language: actions
             build-mode: none
     steps:

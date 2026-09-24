@@ -17,8 +17,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- ASP.NET Core's HttpResults types (IStatusCodeHttpResult, StatusCodes, ...) live in the shared
-         framework, which a plain class-library-style test project must opt into explicitly. -->
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 

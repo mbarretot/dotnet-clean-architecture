@@ -8,7 +8,6 @@ namespace CleanArchitecture.Application;
 
 public static class DependencyInjection
 {
-    /// <summary>Behaviors run outside-in in registration order: logging wraps validation.</summary>
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);

@@ -6,7 +6,6 @@ using CleanArchitecture.SharedKernel.Results;
 
 namespace CleanArchitecture.Presentation.Endpoints.Orders;
 
-/// <summary><c>GET /api/orders</c> — returns a page of the caller's orders.</summary>
 public sealed class GetMyOrders : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder endpoints)

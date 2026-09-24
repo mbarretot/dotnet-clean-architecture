@@ -7,7 +7,6 @@
     <UserSecretsId>cleanarchitecture-presentation</UserSecretsId>
   </PropertyGroup>
 
-  <!-- Build-time OpenAPI generation: produces the document without a running server/live DB connection. -->
   <PropertyGroup>
     <OpenApiGenerateDocumentsOnBuild>true</OpenApiGenerateDocumentsOnBuild>
     <OpenApiDocumentsDirectory>$(MSBuildProjectDirectory)\..\..\artifacts\openapi</OpenApiDocumentsDirectory>

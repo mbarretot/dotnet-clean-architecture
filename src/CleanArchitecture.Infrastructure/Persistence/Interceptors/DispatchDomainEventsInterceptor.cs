@@ -7,10 +7,8 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace CleanArchitecture.Infrastructure.Persistence.Interceptors;
 
-/// <summary>Hooks <c>SavedChangesAsync</c>, not <c>SavingChangesAsync</c>, so events publish only after the transaction commits.</summary>
 public sealed class DispatchDomainEventsInterceptor(IPublisher publisher) : SaveChangesInterceptor
 {
-    // Publish is generic; the event type is only known at runtime, so the closed MethodInfo is cached per type.
     private static readonly ConcurrentDictionary<Type, MethodInfo> PublishMethods = new();
 
     public override async ValueTask<int> SavedChangesAsync(

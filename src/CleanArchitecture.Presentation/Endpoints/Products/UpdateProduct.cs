@@ -16,7 +16,6 @@ public sealed record UpdateProductRequest
     public required string Currency { get; init; }
 }
 
-/// <summary><c>PUT /api/products/{id}</c> — updates an existing product.</summary>
 public sealed class UpdateProduct : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder endpoints)

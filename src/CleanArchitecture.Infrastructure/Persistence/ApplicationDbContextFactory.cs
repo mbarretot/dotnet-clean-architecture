@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore.Design;
 
 namespace CleanArchitecture.Infrastructure.Persistence;
 
-/// <summary>Used only by `dotnet ef` CLI tooling. The connection string is a design-time placeholder, not real config.</summary>
 public sealed class ApplicationDbContextFactory : IDesignTimeDbContextFactory<ApplicationDbContext>
 {
     private const string DesignTimeConnectionString =

@@ -5,7 +5,6 @@ namespace CleanArchitecture.SharedKernel.Messaging;
 
 public static class MediatorServiceCollectionExtensions
 {
-    // ICommandHandler<> and IQueryHandler<,> derive from IRequestHandler<,>, so scanning that covers both.
     private static readonly Type[] OpenHandlerInterfaces =
     [
         typeof(IRequestHandler<,>),

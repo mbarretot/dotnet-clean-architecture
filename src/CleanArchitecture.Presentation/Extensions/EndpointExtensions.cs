@@ -36,29 +36,19 @@ public static class EndpointExtensions
         return app;
     }
 
-    /// <summary>
-    /// Maps the whole HTTP surface. Everything is protected by the authorization fallback policy unless it opts out
-    /// with <c>AllowAnonymous()</c>; the anonymous routes are pinned by a convention test.
-    /// </summary>
     public static WebApplication MapApi(this WebApplication app)
     {
         ArgumentNullException.ThrowIfNull(app);
 
-        // Health probes are anonymous (see MapDefaultEndpoints): the platform calls them without credentials.
         app.MapDefaultEndpoints();
 
-        // Feature endpoints: explicit policies where they add intent, the fallback policy for everything else.
         app.MapEndpoints();
 
-        // Public: API clients and tooling need the contract before they can obtain a token. It lists operations and
-        // their security requirements, never data.
         app.MapOpenApi()
             .AllowAnonymous();
 
         if (app.Environment.IsDevelopment())
         {
-            // Public (Development only): the reference UI must load so a developer can paste a bearer token into it,
-            // or sign in through the identity provider when an OAuth 2.0 flow is configured.
             var oauth2 = app.Services.GetRequiredService<IOptions<OpenApiOAuth2Options>>().Value;
 
             app.MapScalarApiReference(options => ConfigureSignIn(options, oauth2))
@@ -68,7 +58,6 @@ public static class EndpointExtensions
         return app;
     }
 
-    /// <summary>Pre-selects the OAuth 2.0 scheme (Authorization Code + PKCE) when configured; otherwise a no-op.</summary>
     private static void ConfigureSignIn(ScalarOptions options, OpenApiOAuth2Options oauth2)
     {
         if (!oauth2.IsConfigured)

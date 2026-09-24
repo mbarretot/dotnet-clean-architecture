@@ -6,7 +6,6 @@ using Shouldly;
 
 namespace CleanArchitecture.IntegrationTests.Infrastructure;
 
-/// <summary>Starts every test from an empty database and provides clients for the common caller identities.</summary>
 public abstract class IntegrationTest(ApiFactory factory) : IAsyncLifetime
 {
     protected const string WriterSubject = "writer-user";
@@ -21,14 +20,11 @@ public abstract class IntegrationTest(ApiFactory factory) : IAsyncLifetime
 
     protected static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
 
-    /// <summary>Authenticated caller granted <see cref="Scopes.ProductsWrite"/>.</summary>
     protected HttpClient CreateWriterClient() =>
         Factory.CreateClient(TestJwtTokens.Create(WriterSubject, Scopes.ProductsWrite));
 
-    /// <summary>Authenticated caller without any scope: may read, must not write.</summary>
     protected HttpClient CreateReaderClient() => Factory.CreateClient(TestJwtTokens.Create(ReaderSubject));
 
-    /// <summary>Authenticated caller granted <see cref="Scopes.OrdersWrite"/>, identified by <paramref name="subject"/>.</summary>
     protected HttpClient CreateCustomerClient(string subject = CustomerSubject) =>
         Factory.CreateClient(TestJwtTokens.Create(subject, Scopes.OrdersWrite));
 

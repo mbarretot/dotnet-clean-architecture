@@ -10,7 +10,6 @@ using Shouldly;
 
 namespace CleanArchitecture.Infrastructure.UnitTests.Persistence.Repositories;
 
-/// <summary>Proves the whole aggregate (lines and their owned <see cref="Money"/> snapshots) round-trips through real SQL.</summary>
 public sealed class OrderRepositoryTests : IDisposable
 {
     private readonly SqliteApplicationDbContextFixture _fixture = new();

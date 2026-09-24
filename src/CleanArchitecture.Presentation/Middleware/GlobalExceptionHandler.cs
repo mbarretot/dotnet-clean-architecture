@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace CleanArchitecture.Presentation.Middleware;
 
-/// <summary>Logs the full exception server-side; the client only ever gets a generic 500 problem response.</summary>
 internal sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(

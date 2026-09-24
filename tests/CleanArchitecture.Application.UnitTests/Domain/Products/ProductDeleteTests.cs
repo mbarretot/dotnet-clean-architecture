@@ -4,7 +4,6 @@ using Shouldly;
 
 namespace CleanArchitecture.Application.UnitTests.Domain.Products;
 
-/// <summary>Deletion timestamp and actor are stamped by persistence, so the aggregate only flips the flag and raises the event.</summary>
 public class ProductDeleteTests
 {
     private static Product CreateProduct() =>

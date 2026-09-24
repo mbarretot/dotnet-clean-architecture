@@ -5,10 +5,6 @@ using Shouldly;
 
 namespace CleanArchitecture.ArchitectureTests;
 
-/// <summary>
-/// Aggregates reference each other by id only: no Domain entity may hold another aggregate root (or a collection of
-/// them) as a property. A navigation across the boundary would let one transaction load and modify two aggregates.
-/// </summary>
 public class AggregateBoundaryTests
 {
     private static readonly Assembly DomainAssembly = typeof(Order).Assembly;
@@ -35,7 +31,6 @@ public class AggregateBoundaryTests
         violations.ShouldBeEmpty(string.Join(", ", violations));
     }
 
-    /// <summary>The aggregate root type <paramref name="type"/> is, or is a sequence of; otherwise null.</summary>
     private static Type? ReferencedAggregateRoot(Type type)
     {
         if (type.IsAssignableTo(typeof(AggregateRoot)))

@@ -8,7 +8,6 @@ using Shouldly;
 
 namespace CleanArchitecture.IntegrationTests.Products;
 
-/// <summary>Exercises the real JwtBearer handler and the real scope policy end to end, with no auth test doubles.</summary>
 [Collection(IntegrationTestCollection.Name)]
 public sealed class ProductAuthorizationTests(ApiFactory factory) : IntegrationTest(factory)
 {

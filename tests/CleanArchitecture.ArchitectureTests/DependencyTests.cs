@@ -6,7 +6,6 @@ using Shouldly;
 
 namespace CleanArchitecture.ArchitectureTests;
 
-/// <summary>Enforces inward-only dependencies between layers.</summary>
 public class DependencyTests
 {
     private static readonly System.Reflection.Assembly SharedKernelAssembly = typeof(Result).Assembly;

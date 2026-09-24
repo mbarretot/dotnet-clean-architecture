@@ -5,11 +5,6 @@ using CleanArchitecture.SharedKernel.Results;
 
 namespace CleanArchitecture.Domain.Orders;
 
-/// <summary>
-/// Aggregate root owning its <see cref="OrderLine"/>s. Lines are only created through <see cref="Place"/>, so every
-/// order that exists has at least one line, positive quantities and a single currency. Products are referenced by id
-/// only; coordinating the two aggregates is the application layer's job.
-/// </summary>
 public sealed class Order : AggregateRoot
 {
     private readonly List<OrderLine> _lines = [];
@@ -21,24 +16,20 @@ public sealed class Order : AggregateRoot
         Status = OrderStatus.Placed;
     }
 
-    /// <summary>For EF Core only.</summary>
     private Order()
     {
         CustomerId = string.Empty;
     }
 
-    /// <summary>The <c>sub</c> of the caller who placed the order.</summary>
     public string CustomerId { get; private set; }
 
     public OrderStatus Status { get; private set; }
 
     public IReadOnlyCollection<OrderLine> Lines => _lines.AsReadOnly();
 
-    /// <summary>Always defined: an order has at least one line, and all lines share one currency.</summary>
     public Money Total =>
         Money.Create(_lines.Sum(line => line.LineTotal.Amount), _lines[0].UnitPrice.Currency).Value;
 
-    /// <summary>Raises <see cref="OrderPlacedDomainEvent"/>. Lines for the same product are merged into one.</summary>
     public static Result<Order> Place(string customerId, IReadOnlyCollection<OrderLineDraft> lines)
     {
         ArgumentNullException.ThrowIfNull(lines);
@@ -75,7 +66,6 @@ public sealed class Order : AggregateRoot
         return order;
     }
 
-    /// <summary>Raises <see cref="OrderCancelledDomainEvent"/>; a cancelled order cannot be cancelled again.</summary>
     public Result Cancel()
     {
         if (Status == OrderStatus.Cancelled)
@@ -90,7 +80,6 @@ public sealed class Order : AggregateRoot
         return Result.Success();
     }
 
-    /// <summary>A repeated product keeps its first snapshot and adds up the quantities.</summary>
     private void AddLine(OrderLineDraft draft)
     {
         var existing = _lines.Find(line => line.ProductId == draft.ProductId);

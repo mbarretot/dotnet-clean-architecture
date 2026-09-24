@@ -9,7 +9,6 @@ using Shouldly;
 
 namespace CleanArchitecture.IntegrationTests.Products;
 
-/// <summary>The API does not expose audit columns, so they are read back straight from the database.</summary>
 [Collection(IntegrationTestCollection.Name)]
 public sealed class ProductAuditingTests(ApiFactory factory) : IntegrationTest(factory)
 {
@@ -54,7 +53,6 @@ public sealed class ProductAuditingTests(ApiFactory factory) : IntegrationTest(f
         product.DeletedOnUtc.ShouldNotBeNull();
     }
 
-    /// <summary>Bypasses the soft-delete filter so deleted rows can be inspected too.</summary>
     private async Task<Product> FindProductAsync(Guid id)
     {
         await using var scope = Factory.Services.CreateAsyncScope();

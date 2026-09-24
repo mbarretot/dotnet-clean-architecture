@@ -9,11 +9,6 @@ using Shouldly;
 
 namespace CleanArchitecture.Presentation.UnitTests.Authorization;
 
-/// <summary>
-/// Maps the real HTTP surface (the same <see cref="EndpointExtensions.MapApi"/> call <c>Program.cs</c> makes) in
-/// Development, where it is widest, and pins the exact set of anonymous routes. Every other endpoint is protected —
-/// explicitly or by the fallback policy — so a new public endpoint fails this test unless it is deliberately allowed.
-/// </summary>
 public sealed class AnonymousEndpointConventionTests : IAsyncLifetime
 {
     private static readonly string[] AllowedAnonymousRoutes =
@@ -24,7 +19,6 @@ public sealed class AnonymousEndpointConventionTests : IAsyncLifetime
         "/scalar/{documentName?}",
     ];
 
-    /// <summary>Scalar also serves its own static assets (scripts, favicon); their names vary between versions.</summary>
     private const string ScalarAssetsPrefix = "/scalar/";
 
     private WebApplication _app = null!;
@@ -32,7 +26,6 @@ public sealed class AnonymousEndpointConventionTests : IAsyncLifetime
     public ValueTask InitializeAsync()
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Development });
-        // Only endpoint metadata is inspected: Infrastructure (repositories, database) is deliberately not registered.
         builder.Host.UseDefaultServiceProvider(options => options.ValidateOnBuild = false);
         builder.AddDefaultHealthChecks();
         builder.Services.AddApplication();

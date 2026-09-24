@@ -3,7 +3,6 @@ using CleanArchitecture.SharedKernel.Results;
 
 namespace CleanArchitecture.Domain.Products;
 
-/// <summary>Non-negative amount in an ISO 4217 currency.</summary>
 public sealed class Money : ValueObject
 {
     private Money(decimal amount, string currency)

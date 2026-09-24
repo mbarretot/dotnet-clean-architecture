@@ -3,10 +3,6 @@ using CleanArchitecture.SharedKernel.Entities;
 
 namespace CleanArchitecture.Domain.Orders;
 
-/// <summary>
-/// Entity inside the <see cref="Order"/> aggregate, changed only through it. References the product by id, never by
-/// navigation: <see cref="ProductName"/> and <see cref="UnitPrice"/> are snapshots taken when the order was placed.
-/// </summary>
 public sealed class OrderLine : BaseEntity
 {
     private OrderLine(Guid id, Guid productId, string productName, Money unitPrice, int quantity)
@@ -18,7 +14,6 @@ public sealed class OrderLine : BaseEntity
         Quantity = quantity;
     }
 
-    /// <summary>For EF Core only: <see cref="UnitPrice"/> is an owned-type navigation, which constructor binding can't populate.</summary>
     private OrderLine()
     {
         ProductName = string.Empty;

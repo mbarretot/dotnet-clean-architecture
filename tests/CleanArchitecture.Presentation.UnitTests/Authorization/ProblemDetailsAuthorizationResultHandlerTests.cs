@@ -105,7 +105,6 @@ public class ProblemDetailsAuthorizationResultHandlerTests
         return document.RootElement.Clone();
     }
 
-    /// <summary>Behaves like JwtBearer: sets the status code and the challenge header without writing a body.</summary>
     private sealed class FakeAuthenticationService(int challengeStatusCode = StatusCodes.Status401Unauthorized)
         : IAuthenticationService
     {

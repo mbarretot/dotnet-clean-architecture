@@ -12,10 +12,6 @@ using Testcontainers.PostgreSql;
 
 namespace CleanArchitecture.IntegrationTests.Infrastructure;
 
-/// <summary>
-/// Hosts the real API in memory against a throwaway PostgreSQL container. Shared by every test through
-/// <see cref="IntegrationTestCollection"/>, so the container starts and migrations run once per test run.
-/// </summary>
 public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private const string BearerSection = "Authentication:Schemes:Bearer";
@@ -28,7 +24,6 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     {
         await _database.StartAsync();
 
-        // Program only migrates when it is the entry assembly, so the test host must do it explicitly.
         await using (var scope = Services.CreateAsyncScope())
         {
             await scope.ServiceProvider.GetRequiredService<ApplicationDbContext>().Database.MigrateAsync();
@@ -43,14 +38,12 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         });
     }
 
-    /// <summary>Deletes every row written by earlier tests while keeping the migrated schema.</summary>
     public async Task ResetDatabaseAsync()
     {
         await using var connection = await OpenConnectionAsync();
         await _respawner.ResetAsync(connection);
     }
 
-    /// <summary>A client that sends <paramref name="accessToken"/> as a bearer token, or no credentials when null.</summary>
     public HttpClient CreateClient(string? accessToken)
     {
         var client = CreateClient();
@@ -71,15 +64,12 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        // Not "Development": keeps developer user-secrets (e.g. dotnet user-jwts signing keys) out of the test host.
         builder.UseEnvironment("IntegrationTests");
 
-        // UseSetting, not ConfigureAppConfiguration: AddInfrastructure reads the connection string while Program
-        // registers services, before configuration callbacks added by the factory would be applied.
+        // UseSetting: AddInfrastructure reads the connection string before configuration callbacks run.
         builder.UseSetting(
             $"ConnectionStrings:{DependencyInjection.DatabaseConnectionStringName}", _database.GetConnectionString());
 
-        // The same shape `dotnet user-jwts` writes: the real JwtBearer handler validates issuer, audience and signature.
         builder.UseSetting($"{BearerSection}:ValidIssuer", TestJwtTokens.Issuer);
         builder.UseSetting($"{BearerSection}:ValidAudiences:0", TestJwtTokens.Audience);
         builder.UseSetting($"{BearerSection}:SigningKeys:0:Issuer", TestJwtTokens.Issuer);
