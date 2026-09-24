@@ -10,7 +10,7 @@ WORKDIR /src
 
 # Copy solution-level files and every csproj first so `dotnet restore` is cached
 # as its own Docker layer and only re-runs when a project reference or package changes.
-COPY CleanArchitecture.slnx Directory.Build.props Directory.Packages.props nuget.config global.json ./
+COPY CleanArchitecture.slnx Directory.Build.props Directory.Packages.props nuget.config global.json .editorconfig ./
 COPY src/CleanArchitecture.SharedKernel/CleanArchitecture.SharedKernel.csproj src/CleanArchitecture.SharedKernel/
 COPY src/CleanArchitecture.Domain/CleanArchitecture.Domain.csproj src/CleanArchitecture.Domain/
 COPY src/CleanArchitecture.Application/CleanArchitecture.Application.csproj src/CleanArchitecture.Application/
