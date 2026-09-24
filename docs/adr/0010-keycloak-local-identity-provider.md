@@ -15,8 +15,8 @@ Run Keycloak in both local orchestrators and import one realm defined as code.
 
 - [`deploy/keycloak/clean-architecture-realm.json`](../../deploy/keycloak/clean-architecture-realm.json) defines the
   `clean-architecture` realm: an audience mapper that sets `aud = clean-architecture-api`, the `products:write`
-  client scope, confidential clients `clean-architecture-service` (write) and `clean-architecture-reader` (read
-  only), the public `scalar` client, and the test user `alice`. Every secret in it is a committed dev-only value.
+  and `orders:write` client scopes, confidential clients `clean-architecture-service` (write) and
+  `clean-architecture-reader` (read only), the public `scalar` client, and the test user `alice`. Every secret in it is a committed dev-only value.
 - [`docker-compose.yml`](../../docker-compose.yml) runs `keycloak:26.6` with `start-dev --import-realm` on host port
   8180. `KC_HOSTNAME=http://localhost:8180` pins the token issuer, and `KC_HOSTNAME_BACKCHANNEL_DYNAMIC=true` lets
   the API container fetch signing keys from `http://keycloak:8080` (its `Authority`) while validating

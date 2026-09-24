@@ -19,6 +19,7 @@ negative consequences, and the alternatives considered, with links to the code t
 | [0011](0011-integration-tests-testcontainers.md) | Integration tests with WebApplicationFactory, Testcontainers, Respawn, and self-minted JWTs | Accepted | 2026-09-24 |
 | [0012](0012-aspire-compose-and-azure-container-apps.md) | Local orchestration with .NET Aspire and Docker Compose; deploy to Azure Container Apps with Terraform | Accepted | 2026-09-21 |
 | [0013](0013-apply-migrations-at-startup.md) | Apply pending EF Core migrations at API startup | Accepted | 2026-09-24 |
+| [0014](0014-order-aggregate-references-products-by-id.md) | Order aggregate references products by id and snapshots name and price | Accepted | 2026-09-24 |
 
 ## Adding a decision
 

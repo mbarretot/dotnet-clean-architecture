@@ -5,22 +5,23 @@
 
 ## Context
 
-Two requests can load the same product and both save, the second silently overwriting the first. Guarding against
+Two requests can load the same aggregate and both save, the second silently overwriting the first. Guarding against
 lost updates usually means a version column that the application must maintain and the domain model must carry.
 PostgreSQL already maintains a per-row version: the `xmin` system column changes on every update.
 
 ## Decision
 
-Map `xmin` as an EF Core concurrency token on `Product`, as a shadow property so the domain model stays unaware of
-it.
+Map `xmin` as an EF Core concurrency token on every aggregate root (`Product`, `Order`), as a shadow property so the
+domain model stays unaware of it. The aggregate is the consistency boundary, so that is where concurrent writes are
+detected.
 
 - In [`ApplicationDbContext.OnModelCreating`](../../src/CleanArchitecture.Infrastructure/Persistence/ApplicationDbContext.cs)
-  a `uint` shadow property `Version` maps to column `xmin` (type `xid`), `ValueGeneratedOnAddOrUpdate`,
-  `IsConcurrencyToken`.
+  every root entity type deriving from `AggregateRoot` gets a `uint` shadow property `Version` mapped to column
+  `xmin` (type `xid`), `ValueGeneratedOnAddOrUpdate`, `IsConcurrencyToken`.
 - The mapping is applied only when the provider is Npgsql. SQLite, used by the interceptor unit tests
   ([`SqliteApplicationDbContextFixture`](../../tests/CleanArchitecture.Infrastructure.UnitTests/Persistence/Interceptors/SqliteApplicationDbContextFixture.cs)),
-  has no equivalent. That is why the mapping lives in the context rather than in
-  [`ProductConfiguration`](../../src/CleanArchitecture.Infrastructure/Persistence/Configurations/ProductConfiguration.cs).
+  has no equivalent. That is why the mapping lives in the context rather than in each entity configuration, and new
+  aggregates get it with no extra wiring.
 - No migration adds a column: `xmin` exists on every PostgreSQL table.
 
 ## Consequences
@@ -34,7 +35,7 @@ it.
 **Negative**
 
 - Scope is limited to a single unit of work. The version is not exposed to clients (no `ETag` / `If-Match`), so two
-  users editing the same product in separate requests still get last-write-wins.
+  users editing the same product or order in separate requests still get last-write-wins.
 - `DbUpdateConcurrencyException` is not translated to a `Result`; it reaches the global exception handler as a 500
   rather than a 409 (see [ADR-0004](0004-result-pattern.md)).
 - Behaviour is provider-specific: tests on SQLite do not exercise it, and there is no dedicated concurrency test.

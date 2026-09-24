@@ -21,8 +21,8 @@ access unless an endpoint opts out.
   protected requests return 401.
 - Inbound claim mapping is disabled, so claims keep their JWT names; `sub` is the user id read by
   [`CurrentUser`](../../src/CleanArchitecture.Infrastructure/Identity/CurrentUser.cs) for auditing.
-- The `ProductsWrite` policy requires the `products:write`
-  [scope](../../src/CleanArchitecture.Presentation/Authorization/Scopes.cs), checked by
+- The `ProductsWrite` and `OrdersWrite` policies require the `products:write` and `orders:write`
+  [scopes](../../src/CleanArchitecture.Presentation/Authorization/Scopes.cs), checked by
   [`ScopeAuthorizationHandler`](../../src/CleanArchitecture.Presentation/Authorization/ScopeAuthorizationHandler.cs),
   which accepts both a space-delimited `scope` claim and one claim per scope.
 - A **fallback policy** requires an authenticated user for every endpoint without authorization metadata. Public
@@ -33,6 +33,10 @@ access unless an endpoint opts out.
   pins that allow-list, and
   [`BearerSecuritySchemeTransformer`](../../src/CleanArchitecture.Presentation/OpenApi/BearerSecuritySchemeTransformer.cs)
   documents 401 (and 403 for scoped policies) on protected operations.
+- [`ProblemDetailsAuthorizationResultHandler`](../../src/CleanArchitecture.Presentation/Authorization/ProblemDetailsAuthorizationResultHandler.cs)
+  wraps the default authorization result handler and writes those 401/403 responses as RFC 9457 `ProblemDetails`
+  through `IProblemDetailsService`. The scheme challenges first, so `WWW-Authenticate` (including
+  `error="invalid_token"`) is preserved, and the body never reveals why token validation failed.
 
 ## Consequences
 
@@ -41,10 +45,12 @@ access unless an endpoint opts out.
 - Any standards-compliant issuer works (Keycloak, Entra ID, Auth0, `dotnet user-jwts`) with no code change.
 - New endpoints are protected by default; making one public is an explicit, test-visible act.
 - Scopes express API permissions independently of user roles, which suits service-to-service clients.
+- Authentication and authorization failures share the error shape of every other response.
 
 **Negative**
 
-- Authorization is coarse: one write scope, no resource-level or ownership checks.
+- Authorization is coarse: one write scope per resource, with no resource-level policies. Order ownership is checked
+  in the application handlers ([ADR-0014](0014-order-aggregate-references-products-by-id.md)), not by a policy.
 - A misconfigured deployment fails closed (every call 401) rather than failing at startup, which can be slower to
   diagnose.
 - Scope handling has to tolerate issuer differences in claim shape, which the custom handler owns.
