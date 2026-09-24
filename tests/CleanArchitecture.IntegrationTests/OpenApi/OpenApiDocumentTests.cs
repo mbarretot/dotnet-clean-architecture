@@ -86,7 +86,7 @@ public sealed class OpenApiDocumentTests(ApiFactory factory) : IntegrationTest(f
     }
 
     [Fact]
-    public async Task Configured_oauth2_declares_the_authorization_code_flow_with_the_write_scope()
+    public async Task Configured_oauth2_declares_the_authorization_code_flow_with_the_write_scopes()
     {
         await using var host = CreateHostWithOAuth2();
         using var document = await OpenApiDocument.FetchAsync(host.CreateClient(), CancellationToken);
@@ -98,6 +98,7 @@ public sealed class OpenApiDocumentTests(ApiFactory factory) : IntegrationTest(f
         flow.GetProperty("authorizationUrl").GetString().ShouldBe(AuthorizationUrl);
         flow.GetProperty("tokenUrl").GetString().ShouldBe(TokenUrl);
         flow.GetProperty("scopes").TryGetProperty("products:write", out _).ShouldBeTrue();
+        flow.GetProperty("scopes").TryGetProperty("orders:write", out _).ShouldBeTrue();
     }
 
     [Fact]

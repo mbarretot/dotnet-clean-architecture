@@ -41,6 +41,7 @@ internal sealed class OAuth2SecuritySchemeTransformer(IOptions<OpenApiOAuth2Opti
                     Scopes = new Dictionary<string, string>
                     {
                         [Scopes.ProductsWrite] = "Create, update and delete products.",
+                        [Scopes.OrdersWrite] = "Place and cancel your orders.",
                     },
                 },
             },

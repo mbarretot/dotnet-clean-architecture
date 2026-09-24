@@ -81,6 +81,6 @@ public static class EndpointExtensions
             .AddAuthorizationCodeFlow(OAuth2SecuritySchemeTransformer.SchemeId, flow => flow
                 .WithClientId(oauth2.ClientId!)
                 .WithPkce(Pkce.Sha256)
-                .WithSelectedScopes([Scopes.ProductsWrite]));
+                .WithSelectedScopes([Scopes.ProductsWrite, Scopes.OrdersWrite]));
     }
 }
