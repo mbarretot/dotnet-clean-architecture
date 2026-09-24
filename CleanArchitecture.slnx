@@ -12,6 +12,7 @@
     <Project Path="tests/CleanArchitecture.Application.UnitTests/CleanArchitecture.Application.UnitTests.csproj" />
     <Project Path="tests/CleanArchitecture.ArchitectureTests/CleanArchitecture.ArchitectureTests.csproj" />
     <Project Path="tests/CleanArchitecture.Infrastructure.UnitTests/CleanArchitecture.Infrastructure.UnitTests.csproj" />
+    <Project Path="tests/CleanArchitecture.IntegrationTests/CleanArchitecture.IntegrationTests.csproj" />
     <Project Path="tests/CleanArchitecture.Presentation.UnitTests/CleanArchitecture.Presentation.UnitTests.csproj" />
     <Project Path="tests/CleanArchitecture.SharedKernel.UnitTests/CleanArchitecture.SharedKernel.UnitTests.csproj" />
   </Folder>

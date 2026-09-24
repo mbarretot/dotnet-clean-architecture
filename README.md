@@ -11,7 +11,7 @@
 [![Aspire](https://img.shields.io/badge/.NET_Aspire-13.4-7B2CBF?style=flat-square&logo=dotnet&logoColor=white)](https://learn.microsoft.com/dotnet/aspire/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16%20%7C%2017-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-enabled-F5A800?style=flat-square&logo=opentelemetry&logoColor=black)](https://opentelemetry.io/)
-[![Tests](https://img.shields.io/badge/tests-144_passing-2EA44F?style=flat-square)](#quality-gates)
+[![Tests](https://img.shields.io/badge/tests-172_passing-2EA44F?style=flat-square)](#quality-gates)
 [![License: MIT](https://img.shields.io/badge/license-MIT-22C55E?style=flat-square)](LICENSE)
 
 [Architecture](#architecture) · [Request flow](#request-flow) · [Run](#run-it) · [Auth](#authentication) · [Project map](#project-map) · [Delivery](#delivery)
@@ -193,6 +193,7 @@ src/
 └── CleanArchitecture.AppHost           # Aspire orchestration
 tests/
 ├── *.UnitTests                         # Layer-focused tests
+├── CleanArchitecture.IntegrationTests  # HTTP end to end against real PostgreSQL
 └── CleanArchitecture.ArchitectureTests # Dependency and convention rules
 terraform/                              # Azure Container Apps + PostgreSQL
 ```
@@ -205,6 +206,8 @@ dotnet test CleanArchitecture.slnx
 dotnet format CleanArchitecture.slnx --verify-no-changes
 ```
 
+`CleanArchitecture.IntegrationTests` starts a PostgreSQL container with Testcontainers, so Docker must be running for `dotnet test`.
+
 Coverage report (HTML + Markdown summary in `TestResults/coverage-report`):
 
 ```bash
@@ -214,7 +217,7 @@ dotnet tool restore && dotnet test CleanArchitecture.slnx --coverage --coverage-
 | Gate | Coverage |
 |---|---|
 | Build | Nullable enabled, analyzers, deterministic output, warnings as errors |
-| Tests | **144 tests** across five projects |
+| Tests | **172 tests** across six projects |
 | Architecture | Layer, handler, repository, command/query, and mediator conventions |
 | CI | Build, test, formatting, Docker build, Terraform format + validation |
 
