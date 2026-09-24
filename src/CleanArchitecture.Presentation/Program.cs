@@ -1,6 +1,7 @@
 using System.Reflection;
 using CleanArchitecture.Application;
 using CleanArchitecture.Infrastructure;
+using CleanArchitecture.Infrastructure.Persistence;
 using CleanArchitecture.Presentation.Extensions;
 using CleanArchitecture.Presentation.Middleware;
 using Scalar.AspNetCore;
@@ -19,6 +20,13 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
 var app = builder.Build();
+
+var isRunningAsTheEntryPoint = Assembly.GetEntryAssembly() == typeof(Program).Assembly;
+
+if (isRunningAsTheEntryPoint)
+{
+    await app.Services.ApplyPendingMigrationsAsync();
+}
 
 app.UseExceptionHandler();
 

@@ -14,6 +14,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="CleanArchitecture.Infrastructure.UnitTests" />
+    <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\CleanArchitecture.SharedKernel\CleanArchitecture.SharedKernel.csproj" />
     <ProjectReference Include="..\CleanArchitecture.Domain\CleanArchitecture.Domain.csproj" />
     <ProjectReference Include="..\CleanArchitecture.Application\CleanArchitecture.Application.csproj" />

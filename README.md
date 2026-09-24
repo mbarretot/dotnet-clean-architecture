@@ -105,7 +105,7 @@ sequenceDiagram
 **Prerequisites:** [.NET SDK 10.0.302](https://dotnet.microsoft.com/download/dotnet/10.0), Docker, and the [Aspire CLI](https://learn.microsoft.com/dotnet/aspire/cli/overview) for the recommended path.
 
 > [!NOTE]
-> EF Core migrations are not applied automatically. Initialize a fresh database before using the product endpoints; the standalone flow below includes that step.
+> The API applies any pending EF Core migrations automatically at startup (and does nothing if the database is already up to date), so a fresh database is ready to use as soon as the API is reachable — no manual step required.
 
 ### 🟣 Aspire — recommended
 
@@ -131,14 +131,19 @@ docker compose up --build
 <summary><strong>Run with a separate PostgreSQL instance</strong></summary>
 
 ```bash
+dotnet run --project src/CleanArchitecture.Presentation
+```
+
+Set `ConnectionStrings:Database` through configuration or user secrets before starting the API. The API applies pending migrations itself on startup, so this is enough for a fresh database.
+
+To apply migrations explicitly instead — e.g. in CI, or to control exactly when they run — use `dotnet ef` directly:
+
+```bash
 dotnet tool restore
 dotnet ef database update \
   --project src/CleanArchitecture.Infrastructure \
   --startup-project src/CleanArchitecture.Infrastructure
-dotnet run --project src/CleanArchitecture.Presentation
 ```
-
-Set `ConnectionStrings:Database` through configuration or user secrets before starting the API.
 
 </details>
 
