@@ -89,8 +89,6 @@ updates:
       prefix: chore
       include: scope
 
-  # Bumps the SDK pinned in global.json. The same version is pinned in ci.yml and codeql.yml
-  # (setup-dotnet "dotnet-version"); update those in the same PR or the build will fail.
   - package-ecosystem: dotnet-sdk
     directory: /
     schedule:

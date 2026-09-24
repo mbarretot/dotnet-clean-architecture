@@ -106,7 +106,7 @@ sequenceDiagram
 
 ## 🚀 Run it
 
-**Prerequisites:** [.NET SDK 10.0.302](https://dotnet.microsoft.com/download/dotnet/10.0), Docker, and the [Aspire CLI](https://learn.microsoft.com/dotnet/aspire/cli/overview) for the recommended path.
+**Prerequisites:** [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) (exact version in [global.json](global.json)), Docker, and the [Aspire CLI](https://learn.microsoft.com/dotnet/aspire/cli/overview) for the recommended path.
 
 > [!NOTE]
 > The API applies any pending EF Core migrations automatically at startup (and does nothing if the database is already up to date), so a fresh database is ready to use as soon as the API is reachable — no manual step required.

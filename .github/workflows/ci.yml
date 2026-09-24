@@ -27,9 +27,7 @@ jobs:
       - name: Setup .NET 10 SDK
         uses: actions/setup-dotnet@v4
         with:
-          # Pinned to the exact SDK global.json requires (rollForward: latestFeature makes this
-          # a floor, not a ceiling — keeping CI and global.json in lockstep avoids drift).
-          dotnet-version: "10.0.302"
+          global-json-file: global.json
           cache: true
           # No packages.lock.json in this repo (Central Package Management via
           # Directory.Packages.props instead), so the cache key is derived from the CPM file
