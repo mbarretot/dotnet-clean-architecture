@@ -38,18 +38,14 @@ RUN dotnet publish src/CleanArchitecture.Presentation/CleanArchitecture.Presenta
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
-# Non-root user: the aspnet base image runs as root by default.
-RUN groupadd --gid 1654 appgroup \
-    && useradd --uid 1654 --gid appgroup --shell /usr/sbin/nologin --no-create-home appuser
-
 ENV ASPNETCORE_URLS=http://+:8080 \
     ASPNETCORE_HTTP_PORTS=8080 \
     DOTNET_RUNNING_IN_CONTAINER=true
 
 EXPOSE 8080
 
-COPY --from=build --chown=appuser:appgroup /app/publish .
+COPY --from=build --chown=$APP_UID:$APP_UID /app/publish .
 
-USER appuser
+USER $APP_UID
 
 ENTRYPOINT ["dotnet", "CleanArchitecture.Presentation.dll"]
