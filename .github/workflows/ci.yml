@@ -44,19 +44,18 @@ jobs:
       - name: Build (warnings as errors)
         run: dotnet build CleanArchitecture.slnx --no-restore -warnaserror
 
-      - name: Test
-        run: dotnet test CleanArchitecture.slnx --no-build | tee test-output.log
-        # NOTE: this repo's test projects run on Microsoft.Testing.Platform (MTP) —
-        # global.json sets "test.runner": "Microsoft.Testing.Platform" and every test csproj
-        # has <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>. The
-        # classic VSTest `--logger "trx;LogFileName=..."` syntax requested for this step does
-        # NOT work against MTP-mode projects: verified by hand here, it makes `dotnet test`
-        # report "No se ejecutaron pruebas" / exit code 5 (no tests ran) for every project,
-        # even though the same solution runs all 121 tests cleanly without that flag. Emitting
-        # a real .trx also requires the Microsoft.Testing.Extensions.TrxReport(.Xunit) package
-        # referenced by each test project, which none of them currently reference — adding it
-        # is a test-project change outside this workflow-only change. Uploading the full
-        # console log below is the accurate substitute until that package is added.
+      - name: Test (with coverage)
+        run: >-
+          dotnet test CleanArchitecture.slnx --no-build
+          --coverage --coverage-output-format cobertura
+          --coverage-settings CodeCoverage.config
+          --results-directory TestResults
+          | tee test-output.log
+        # Test projects run on Microsoft.Testing.Platform (global.json "test.runner"), so MTP
+        # options are passed directly: no VSTest `--collect`/`--logger`, no `--` separator.
+        # Coverage comes from Microsoft.Testing.Extensions.CodeCoverage, referenced by every test
+        # project via Directory.Build.props; test assemblies are excluded by default and
+        # CodeCoverage.config drops EF migrations and generated code.
 
       - name: Upload test results log
         if: always()
@@ -64,6 +63,30 @@ jobs:
         with:
           name: test-results
           path: test-output.log
+          retention-days: 14
+
+      - name: Restore local tools
+        if: ${{ !cancelled() && hashFiles('TestResults/*.cobertura.xml') != '' }}
+        run: dotnet tool restore
+
+      - name: Merge coverage reports
+        if: ${{ !cancelled() && hashFiles('TestResults/*.cobertura.xml') != '' }}
+        run: >-
+          dotnet reportgenerator
+          "-reports:TestResults/*.cobertura.xml"
+          "-targetdir:TestResults/coverage-report"
+          "-reporttypes:HtmlInline;Cobertura;MarkdownSummaryGithub"
+
+      - name: Publish coverage summary
+        if: ${{ !cancelled() && hashFiles('TestResults/coverage-report/SummaryGithub.md') != '' }}
+        run: cat TestResults/coverage-report/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload coverage report
+        if: ${{ !cancelled() && hashFiles('TestResults/coverage-report/index.html') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: TestResults/coverage-report
           retention-days: 14
 
       - name: Verify formatting

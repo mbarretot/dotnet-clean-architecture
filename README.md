@@ -182,6 +182,12 @@ dotnet test CleanArchitecture.slnx
 dotnet format CleanArchitecture.slnx --verify-no-changes
 ```
 
+Coverage report (HTML + Markdown summary in `TestResults/coverage-report`):
+
+```bash
+dotnet tool restore && dotnet test CleanArchitecture.slnx --coverage --coverage-output-format cobertura --coverage-settings CodeCoverage.config --results-directory TestResults && dotnet reportgenerator "-reports:TestResults/*.cobertura.xml" "-targetdir:TestResults/coverage-report" "-reporttypes:HtmlInline;Cobertura;MarkdownSummaryGithub"
+```
+
 | Gate | Coverage |
 |---|---|
 | Build | Nullable enabled, analyzers, deterministic output, warnings as errors |
