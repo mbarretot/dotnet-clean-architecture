@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Infrastructure;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 
@@ -14,7 +15,7 @@ namespace CleanArchitecture.Presentation.OpenApi;
 /// requires authorization — anonymous endpoints stay unmarked instead of inheriting a document-wide requirement.
 /// The effective policy is resolved the way the authorization middleware does it, so endpoints protected only by the
 /// fallback policy are documented too. Protected operations declare 401; those whose policy demands more than an
-/// authenticated user (scopes, roles) also declare 403.
+/// authenticated user (scopes, roles) also declare 403. Both carry an <c>application/problem+json</c> body.
 /// </summary>
 internal sealed class BearerSecuritySchemeTransformer(
     IAuthenticationSchemeProvider authenticationSchemeProvider,
@@ -22,6 +23,10 @@ internal sealed class BearerSecuritySchemeTransformer(
     : IOpenApiDocumentTransformer, IOpenApiOperationTransformer
 {
     private const string SchemeId = JwtBearerDefaults.AuthenticationScheme;
+
+    private const string ProblemJsonContentType = "application/problem+json";
+
+    private const string ProblemDetailsSchemaId = nameof(ProblemDetails);
 
     public async Task TransformAsync(
         OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
@@ -60,17 +65,50 @@ internal sealed class BearerSecuritySchemeTransformer(
             [new OpenApiSecuritySchemeReference(SchemeId, context.Document)] = [],
         });
 
+        var problemSchema = await GetProblemDetailsSchemaReferenceAsync(context, cancellationToken).ConfigureAwait(false);
+
         operation.Responses ??= [];
         operation.Responses.TryAdd(
             StatusCodes.Status401Unauthorized.ToString(CultureInfo.InvariantCulture),
-            new OpenApiResponse { Description = "Unauthorized: the bearer token is missing, expired or invalid." });
+            ProblemResponse("Unauthorized: the bearer token is missing, expired or invalid.", problemSchema));
 
         if (policy.Requirements.Any(requirement => requirement is not DenyAnonymousAuthorizationRequirement))
         {
             operation.Responses.TryAdd(
                 StatusCodes.Status403Forbidden.ToString(CultureInfo.InvariantCulture),
-                new OpenApiResponse { Description = "Forbidden: the token lacks a required scope or role." });
+                ProblemResponse("Forbidden: the token lacks a required scope or role.", problemSchema));
         }
+    }
+
+    /// <summary>Matches what ProblemDetailsAuthorizationResultHandler writes at runtime.</summary>
+    private static OpenApiResponse ProblemResponse(string description, IOpenApiSchema schema) => new()
+    {
+        Description = description,
+        Content = new Dictionary<string, OpenApiMediaType>
+        {
+            [ProblemJsonContentType] = new OpenApiMediaType { Schema = schema },
+        },
+    };
+
+    /// <summary>
+    /// Registers the <see cref="ProblemDetails"/> component (unless an endpoint's <c>ProducesProblem</c> already did)
+    /// and references it, so an operation protected only by the fallback policy never points at a missing schema.
+    /// </summary>
+    private static async Task<IOpenApiSchema> GetProblemDetailsSchemaReferenceAsync(
+        OpenApiOperationTransformerContext context, CancellationToken cancellationToken)
+    {
+        var document = context.Document!;
+        document.Components ??= new OpenApiComponents();
+        document.Components.Schemas ??= new Dictionary<string, IOpenApiSchema>();
+
+        if (!document.Components.Schemas.ContainsKey(ProblemDetailsSchemaId))
+        {
+            var schema = await context.GetOrCreateSchemaAsync(typeof(ProblemDetails), cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+            document.Components.Schemas[ProblemDetailsSchemaId] = schema;
+        }
+
+        return new OpenApiSchemaReference(ProblemDetailsSchemaId, document);
     }
 
     /// <summary>

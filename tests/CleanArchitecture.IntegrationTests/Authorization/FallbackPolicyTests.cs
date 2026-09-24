@@ -28,6 +28,8 @@ public sealed class FallbackPolicyTests(ApiFactory factory) : IntegrationTest(fa
         var response = await client.GetAsync(UnannotatedEndpoint.Route, CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        response.Content.Headers.ContentType?.MediaType.ShouldBe("application/problem+json");
+        response.Headers.WwwAuthenticate.ShouldContain(header => header.Scheme == "Bearer");
     }
 
     [Fact]
@@ -53,6 +55,9 @@ public sealed class FallbackPolicyTests(ApiFactory factory) : IntegrationTest(fa
         operation.RequiresBearer().ShouldBeTrue();
         operation.DeclaresResponse("401").ShouldBeTrue();
         operation.DeclaresResponse("403").ShouldBeFalse();
+        operation.ResponseSchemaReference("401", "application/problem+json")
+            .ShouldBe("#/components/schemas/ProblemDetails");
+        document.Schema("ProblemDetails").ShouldNotBeNull();
     }
 
     private WebApplicationFactory<Program> CreateHostWithUnannotatedEndpoint() => Factory.WithWebHostBuilder(builder =>

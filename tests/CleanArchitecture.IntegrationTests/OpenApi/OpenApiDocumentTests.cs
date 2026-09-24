@@ -59,6 +59,19 @@ public sealed class OpenApiDocumentTests(ApiFactory factory) : IntegrationTest(f
         operation.DeclaresResponse("403").ShouldBeTrue();
     }
 
+    [Theory]
+    [MemberData(nameof(WriteOperations))]
+    public async Task Authorization_failures_are_documented_as_problem_details(string path, string method)
+    {
+        using var document = await OpenApiDocument.FetchAsync(CreateAnonymousClient(), CancellationToken);
+
+        var operation = document.Operation(path, method);
+
+        operation.ResponseSchemaReference("401", ProblemJson).ShouldBe(ProblemDetailsSchemaReference);
+        operation.ResponseSchemaReference("403", ProblemJson).ShouldBe(ProblemDetailsSchemaReference);
+        document.Schema("ProblemDetails").ShouldNotBeNull();
+    }
+
     [Fact]
     public async Task Document_omits_the_oauth2_scheme_when_it_is_not_configured()
     {
@@ -95,6 +108,10 @@ public sealed class OpenApiDocumentTests(ApiFactory factory) : IntegrationTest(f
 
         document.Operation("/api/products", "get").RequiresScheme(OAuth2SchemeId).ShouldBeTrue();
     }
+
+    private const string ProblemJson = "application/problem+json";
+
+    private const string ProblemDetailsSchemaReference = "#/components/schemas/ProblemDetails";
 
     private const string OAuth2SchemeId = "OAuth2";
 
@@ -139,6 +156,13 @@ internal sealed class OpenApiDocument : IDisposable
             ? scheme
             : null;
 
+    public JsonElement? Schema(string schemaId) =>
+        _json.RootElement.TryGetProperty("components", out var components)
+        && components.TryGetProperty("schemas", out var schemas)
+        && schemas.TryGetProperty(schemaId, out var schema)
+            ? schema
+            : null;
+
     public void Dispose() => _json.Dispose();
 }
 
@@ -152,4 +176,15 @@ internal readonly record struct OpenApiOperation(JsonElement Element)
 
     public bool DeclaresResponse(string statusCode) =>
         Element.TryGetProperty("responses", out var responses) && responses.TryGetProperty(statusCode, out _);
+
+    /// <summary>The <c>$ref</c> of the response body schema for <paramref name="mediaType"/>, or null when absent.</summary>
+    public string? ResponseSchemaReference(string statusCode, string mediaType) =>
+        Element.TryGetProperty("responses", out var responses)
+        && responses.TryGetProperty(statusCode, out var response)
+        && response.TryGetProperty("content", out var content)
+        && content.TryGetProperty(mediaType, out var media)
+        && media.TryGetProperty("schema", out var schema)
+        && schema.TryGetProperty("$ref", out var reference)
+            ? reference.GetString()
+            : null;
 }

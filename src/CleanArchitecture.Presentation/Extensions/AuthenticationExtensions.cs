@@ -21,6 +21,7 @@ public static class AuthenticationExtensions
             .AddJwtBearer(options => options.MapInboundClaims = false);
 
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IAuthorizationHandler, ScopeAuthorizationHandler>());
+        services.AddSingleton<IAuthorizationMiddlewareResultHandler, ProblemDetailsAuthorizationResultHandler>();
 
         services.AddAuthorizationBuilder()
             // Secure by default: any endpoint without authorization metadata requires an authenticated user.
