@@ -85,18 +85,20 @@ public static class Extensions
         return builder;
     }
 
+    /// <summary>
+    /// Mapped in every environment because the Container Apps liveness (/alive) and readiness (/health) probes
+    /// run in Production. The default writer only returns the aggregate status text, so no check details leak.
+    /// </summary>
     public static WebApplication MapDefaultEndpoints(this WebApplication app)
     {
-        // Dev-only: exposing health endpoints elsewhere has security implications. See https://aka.ms/aspire/healthchecks
-        if (app.Environment.IsDevelopment())
-        {
-            app.MapHealthChecks(HealthEndpointPath);
+        // Readiness: every registered check, including dependencies such as the database.
+        app.MapHealthChecks(HealthEndpointPath);
 
-            app.MapHealthChecks(AlivenessEndpointPath, new HealthCheckOptions
-            {
-                Predicate = r => r.Tags.Contains("live")
-            });
-        }
+        // Liveness: process self-checks only, so a dependency outage never triggers a restart loop.
+        app.MapHealthChecks(AlivenessEndpointPath, new HealthCheckOptions
+        {
+            Predicate = r => r.Tags.Contains("live")
+        });
 
         return app;
     }

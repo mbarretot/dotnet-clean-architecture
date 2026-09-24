@@ -17,6 +17,11 @@ public static class DependencyInjection
 {
     public const string DatabaseConnectionStringName = "Database";
 
+    public const string DatabaseHealthCheckName = "database";
+
+    /// <summary>Deliberately not "live": a database outage must pull the replica out of traffic, not restart it.</summary>
+    public const string ReadinessTag = "ready";
+
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -36,6 +41,9 @@ public static class DependencyInjection
             .AddInterceptors(
                 serviceProvider.GetRequiredService<AuditableEntitySaveChangesInterceptor>(),
                 serviceProvider.GetRequiredService<DispatchDomainEventsInterceptor>()));
+
+        services.AddHealthChecks()
+            .AddDbContextCheck<ApplicationDbContext>(DatabaseHealthCheckName, tags: [ReadinessTag]);
 
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
