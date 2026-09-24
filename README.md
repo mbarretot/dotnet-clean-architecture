@@ -11,7 +11,7 @@
 [![Aspire](https://img.shields.io/badge/.NET_Aspire-13.4-7B2CBF?style=flat-square&logo=dotnet&logoColor=white)](https://learn.microsoft.com/dotnet/aspire/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16%20%7C%2017-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-enabled-F5A800?style=flat-square&logo=opentelemetry&logoColor=black)](https://opentelemetry.io/)
-[![Tests](https://img.shields.io/badge/tests-172_passing-2EA44F?style=flat-square)](#quality-gates)
+[![Tests](https://img.shields.io/badge/tests-192_passing-2EA44F?style=flat-square)](#quality-gates)
 [![License: MIT](https://img.shields.io/badge/license-MIT-22C55E?style=flat-square)](LICENSE)
 
 [Architecture](#architecture) · [Request flow](#request-flow) · [Run](#run-it) · [Auth](#authentication) · [Project map](#project-map) · [Delivery](#delivery)
@@ -159,7 +159,9 @@ dotnet ef database update \
 
 ## 🔐 Authentication
 
-Provider-agnostic JWT bearer tokens (`Microsoft.AspNetCore.Authentication.JwtBearer`), configured from `Authentication:Schemes:Bearer`. Health endpoints, the OpenAPI document, and Scalar stay anonymous; without a configured issuer the API still starts and protected calls return `401`.
+Provider-agnostic JWT bearer tokens (`Microsoft.AspNetCore.Authentication.JwtBearer`), configured from `Authentication:Schemes:Bearer`. Without a configured issuer the API still starts and protected calls return `401`.
+
+**Secure by default** — an authorization fallback policy requires an authenticated user on every endpoint that declares nothing, so a new endpoint is never accidentally public. Public routes are opt-in via `AllowAnonymous()`: the health probes (`/health`, `/alive`), the OpenAPI document, and Scalar (Development only). A convention test pins that allow-list, and the OpenAPI document declares `401` (plus `403` for scoped operations) on every protected operation.
 
 **Local development** — mint a token with the built-in tool (it stores the signing key in user secrets and adds the issuer/audience to `appsettings.Development.json`):
 
@@ -217,7 +219,7 @@ dotnet tool restore && dotnet test CleanArchitecture.slnx --coverage --coverage-
 | Gate | Coverage |
 |---|---|
 | Build | Nullable enabled, analyzers, deterministic output, warnings as errors |
-| Tests | **172 tests** across six projects |
+| Tests | **192 tests** across six projects |
 | Architecture | Layer, handler, repository, command/query, and mediator conventions |
 | CI | Build, test, formatting, Docker build, Terraform format + validation |
 

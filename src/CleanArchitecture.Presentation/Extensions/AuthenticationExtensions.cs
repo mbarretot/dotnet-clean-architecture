@@ -23,6 +23,9 @@ public static class AuthenticationExtensions
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IAuthorizationHandler, ScopeAuthorizationHandler>());
 
         services.AddAuthorizationBuilder()
+            // Secure by default: any endpoint without authorization metadata requires an authenticated user.
+            // Public routes must opt out explicitly with AllowAnonymous(), pinned by AnonymousEndpointConventionTests.
+            .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build())
             .AddPolicy(AuthorizationPolicies.ProductsWrite, policy => policy
                 .RequireAuthenticatedUser()
                 .AddRequirements(new ScopeRequirement(Scopes.ProductsWrite)));

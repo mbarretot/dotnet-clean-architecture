@@ -19,4 +19,17 @@ public sealed class HealthEndpointTests(ApiFactory factory) : IntegrationTest(fa
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         (await response.Content.ReadAsStringAsync(CancellationToken)).ShouldBe("Healthy");
     }
+
+    [Theory]
+    [InlineData("/alive")]
+    [InlineData("/health")]
+    public async Task Probe_ignores_an_invalid_bearer_token(string path)
+    {
+        // Probes opt out of the fallback policy, so a stale or foreign token must not turn them into a 401.
+        using var client = Factory.CreateClient(accessToken: "not-a-jwt");
+
+        var response = await client.GetAsync(path, CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
 }

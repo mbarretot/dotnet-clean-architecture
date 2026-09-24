@@ -88,17 +88,20 @@ public static class Extensions
     /// <summary>
     /// Mapped in every environment because the Container Apps liveness (/alive) and readiness (/health) probes
     /// run in Production. The default writer only returns the aggregate status text, so no check details leak.
+    /// Both are anonymous because the platform probes carry no credentials; without the opt-out an app-wide
+    /// authorization fallback policy would answer 401 and the container would be restarted or never marked ready.
     /// </summary>
     public static WebApplication MapDefaultEndpoints(this WebApplication app)
     {
         // Readiness: every registered check, including dependencies such as the database.
-        app.MapHealthChecks(HealthEndpointPath);
+        app.MapHealthChecks(HealthEndpointPath)
+            .AllowAnonymous();
 
         // Liveness: process self-checks only, so a dependency outage never triggers a restart loop.
         app.MapHealthChecks(AlivenessEndpointPath, new HealthCheckOptions
         {
             Predicate = r => r.Tags.Contains("live")
-        });
+        }).AllowAnonymous();
 
         return app;
     }

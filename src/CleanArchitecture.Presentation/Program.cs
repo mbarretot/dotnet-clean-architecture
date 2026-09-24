@@ -4,8 +4,6 @@ using CleanArchitecture.Infrastructure;
 using CleanArchitecture.Infrastructure.Persistence;
 using CleanArchitecture.Presentation.Extensions;
 using CleanArchitecture.Presentation.Middleware;
-using CleanArchitecture.Presentation.OpenApi;
-using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,9 +15,7 @@ builder.Services.AddEndpoints(Assembly.GetExecutingAssembly());
 
 builder.Services.AddAuthenticationAndAuthorization();
 
-builder.Services.AddOpenApi(options => options
-    .AddDocumentTransformer<BearerSecuritySchemeTransformer>()
-    .AddOperationTransformer<BearerSecuritySchemeTransformer>());
+builder.Services.AddApiDocumentation();
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
@@ -39,16 +35,7 @@ app.UseExceptionHandler();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapDefaultEndpoints();
-
-app.MapEndpoints();
-
-app.MapOpenApi();
-
-if (app.Environment.IsDevelopment())
-{
-    app.MapScalarApiReference();
-}
+app.MapApi();
 
 app.Run();
 
