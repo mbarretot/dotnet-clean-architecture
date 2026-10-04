@@ -60,7 +60,16 @@
     },
     {
       "name": "orders:write",
-      "description": "Place and cancel your own orders.",
+      "description": "Place, pay and cancel your own orders.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      }
+    },
+    {
+      "name": "orders:fulfill",
+      "description": "Ship and complete any customer's orders.",
       "protocol": "openid-connect",
       "attributes": {
         "include.in.token.scope": "true",
@@ -71,14 +80,14 @@
   "clients": [
     {
       "clientId": "clean-architecture-service",
-      "description": "DEV ONLY. Machine client (client_credentials) with products:write and orders:write: can read and write.",
+      "description": "DEV ONLY. Machine client (client_credentials) with products:write, orders:write and orders:fulfill: can read and write.",
       "enabled": true,
       "publicClient": false,
       "secret": "dev-only-service-secret",
       "serviceAccountsEnabled": true,
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false,
-      "defaultClientScopes": ["basic", "clean-architecture-api-audience", "products:write", "orders:write"],
+      "defaultClientScopes": ["basic", "clean-architecture-api-audience", "products:write", "orders:write", "orders:fulfill"],
       "optionalClientScopes": []
     },
     {
@@ -95,7 +104,7 @@
     },
     {
       "clientId": "scalar",
-      "description": "DEV ONLY. Public client for Scalar: Authorization Code + PKCE, products:write and orders:write on request.",
+      "description": "DEV ONLY. Public client for Scalar: Authorization Code + PKCE, products:write, orders:write and orders:fulfill on request.",
       "enabled": true,
       "publicClient": true,
       "standardFlowEnabled": true,
@@ -106,7 +115,7 @@
         "pkce.code.challenge.method": "S256"
       },
       "defaultClientScopes": ["basic", "clean-architecture-api-audience"],
-      "optionalClientScopes": ["products:write", "orders:write"]
+      "optionalClientScopes": ["products:write", "orders:write", "orders:fulfill"]
     }
   ],
   "users": [

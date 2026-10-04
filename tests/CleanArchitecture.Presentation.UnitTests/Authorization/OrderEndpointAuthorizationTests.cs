@@ -38,7 +38,7 @@ public sealed class OrderEndpointAuthorizationTests : IAsyncLifetime
             .ToList();
 
     [Fact]
-    public void OrderEndpoints_ShouldExist() => OrderEndpoints.Count.ShouldBe(4);
+    public void OrderEndpoints_ShouldExist() => OrderEndpoints.Count.ShouldBe(7);
 
     [Fact]
     public void EveryOrderEndpoint_ShouldRequireAuthorizationAndNotAllowAnonymous()
@@ -62,14 +62,42 @@ public sealed class OrderEndpointAuthorizationTests : IAsyncLifetime
             .All(authorizeData => authorizeData.Policy == null && authorizeData.Roles == null));
     }
 
+    [Theory]
+    [InlineData("/api/orders", AuthorizationPolicies.OrdersWrite)]
+    [InlineData("/api/orders/{id:guid}/pay", AuthorizationPolicies.OrdersWrite)]
+    [InlineData("/api/orders/{id:guid}/cancel", AuthorizationPolicies.OrdersWrite)]
+    [InlineData("/api/orders/{id:guid}/ship", AuthorizationPolicies.OrdersFulfill)]
+    [InlineData("/api/orders/{id:guid}/complete", AuthorizationPolicies.OrdersFulfill)]
+    public void WriteOrderEndpoint_ShouldRequireItsPolicy(string route, string policy)
+    {
+        var endpoint = OrderEndpoints.Single(endpoint => !IsReadOnly(endpoint) && endpoint.RoutePattern.RawText == route);
+
+        endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>()
+            .Select(authorizeData => authorizeData.Policy)
+            .ShouldContain(policy);
+    }
+
     [Fact]
-    public void WriteOrderEndpoints_ShouldRequireTheOrdersWritePolicy()
+    public void WriteOrderEndpoints_ShouldEachRequireAWritePolicy()
     {
         var writeEndpoints = OrderEndpoints.Where(endpoint => !IsReadOnly(endpoint)).ToList();
 
-        writeEndpoints.Count.ShouldBe(2);
+        writeEndpoints.Count.ShouldBe(5);
         writeEndpoints.ShouldAllBe(endpoint => endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>()
-            .Any(authorizeData => authorizeData.Policy == AuthorizationPolicies.OrdersWrite));
+            .Any(authorizeData => authorizeData.Policy == AuthorizationPolicies.OrdersWrite
+                || authorizeData.Policy == AuthorizationPolicies.OrdersFulfill));
+    }
+
+    [Theory]
+    [InlineData("orders:fulfill", true)]
+    [InlineData("orders:write", false)]
+    public async Task OrdersFulfillPolicy_EvaluatesTheScopeClaim(string scope, bool expected)
+    {
+        var user = new ClaimsPrincipal(new ClaimsIdentity([new Claim(Scopes.ClaimType, scope)], "Bearer"));
+
+        var result = await AuthorizeAsync(user, AuthorizationPolicies.OrdersFulfill);
+
+        result.Succeeded.ShouldBe(expected);
     }
 
     [Theory]
@@ -95,12 +123,13 @@ public sealed class OrderEndpointAuthorizationTests : IAsyncLifetime
         result.Succeeded.ShouldBeFalse();
     }
 
-    private async Task<AuthorizationResult> AuthorizeAsync(ClaimsPrincipal user)
+    private async Task<AuthorizationResult> AuthorizeAsync(
+        ClaimsPrincipal user, string policy = AuthorizationPolicies.OrdersWrite)
     {
         await using var scope = _app.Services.CreateAsyncScope();
         var authorizationService = scope.ServiceProvider.GetRequiredService<IAuthorizationService>();
 
-        return await authorizationService.AuthorizeAsync(user, AuthorizationPolicies.OrdersWrite);
+        return await authorizationService.AuthorizeAsync(user, policy);
     }
 
     private static bool IsReadOnly(RouteEndpoint endpoint) =>

@@ -79,6 +79,14 @@ public class OrderTests
     }
 
     [Fact]
+    public void Place_WithOneNonPositiveQuantityAmongValidLines_Fails() =>
+        Order.Place(CustomerId, [Keyboard(1), Mouse(0)]).Error.ShouldBe(OrderErrors.QuantityNotPositive);
+
+    [Fact]
+    public void Place_WithNullLines_Throws() =>
+        Should.Throw<ArgumentNullException>(() => Order.Place(CustomerId, null!));
+
+    [Fact]
     public void Place_WithLinesInDifferentCurrencies_Fails()
     {
         var result = Order.Place(CustomerId, [Keyboard(currency: "USD"), Mouse(currency: "EUR")]);

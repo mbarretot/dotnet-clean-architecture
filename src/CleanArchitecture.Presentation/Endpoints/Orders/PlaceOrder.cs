@@ -30,10 +30,12 @@ public sealed class PlaceOrder : IEndpoint
             .WithDescription(
                 "Places an order for the authenticated caller and returns the identifier of the new resource. Each " +
                 "line snapshots the product's current name and price; lines for the same product are merged. " +
-                "Unknown or deleted products return 404, and all products must share one currency.")
+                "Unknown or deleted products return 404, and all products must share one currency. Each line " +
+                "reserves stock; a product without enough units on hand returns 409.")
             .Produces<Guid>(StatusCodes.Status201Created)
             .ProducesValidationProblem()
-            .ProducesProblem(StatusCodes.Status404NotFound);
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict);
     }
 
     private static async Task<IResult> HandleAsync(

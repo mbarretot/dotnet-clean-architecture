@@ -59,7 +59,7 @@ public sealed class ProductRepositoryTests : IDisposable
     }
 
     [Fact]
-    public async Task GetAllAsync_PagesResultsOrderedByName()
+    public async Task SearchAsync_WithDefaultCriteria_PagesResultsOrderedByName()
     {
         using var context = _fixture.CreateContext(_dateTimeProvider, _currentUser, _publisher);
         var repository = new ProductRepository(context);
@@ -68,11 +68,73 @@ public sealed class ProductRepositoryTests : IDisposable
         repository.Add(Product.Create("Mango Case", "d", Money.Create(1m, "USD").Value, Sku.Create("SKU-C").Value).Value);
         await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var firstPage = await repository.GetAllAsync(pageNumber: 1, pageSize: 2, TestContext.Current.CancellationToken);
-        var secondPage = await repository.GetAllAsync(pageNumber: 2, pageSize: 2, TestContext.Current.CancellationToken);
+        var firstPage = await repository.SearchAsync(
+            new ProductSearchCriteria(PageNumber: 1, PageSize: 2), TestContext.Current.CancellationToken);
+        var secondPage = await repository.SearchAsync(
+            new ProductSearchCriteria(PageNumber: 2, PageSize: 2), TestContext.Current.CancellationToken);
 
         firstPage.Select(product => product.Name).ShouldBe(["Apple Stand", "Mango Case"]);
         secondPage.Select(product => product.Name).ShouldBe(["Zebra Mat"]);
+    }
+
+    [Theory]
+    [InlineData("keyboard", new[] { "Mechanical Keyboard" })]
+    [InlineData("WIRELESS", new[] { "Mouse", "Mechanical Keyboard" })]
+    [InlineData("cable", new string[0])]
+    public async Task SearchAsync_WithSearchTerm_MatchesNameOrDescriptionIgnoringCase(string search, string[] expected)
+    {
+        using var context = _fixture.CreateContext(_dateTimeProvider, _currentUser, _publisher);
+        var repository = await SeedCatalogAsync(context);
+
+        var products = await repository.SearchAsync(
+            new ProductSearchCriteria(Search: search, SortOrder: ProductSortOrder.PriceAscending),
+            TestContext.Current.CancellationToken);
+
+        products.Select(product => product.Name).ShouldBe(expected);
+    }
+
+    [Fact]
+    public async Task SearchAsync_WithPriceRange_IncludesBothBounds()
+    {
+        using var context = _fixture.CreateContext(_dateTimeProvider, _currentUser, _publisher);
+        var repository = await SeedCatalogAsync(context);
+
+        var products = await repository.SearchAsync(
+            new ProductSearchCriteria(MinPrice: 20m, MaxPrice: 80m), TestContext.Current.CancellationToken);
+
+        products.Select(product => product.Name).ShouldBe(["Mechanical Keyboard", "Mouse"]);
+    }
+
+    [Theory]
+    [InlineData(ProductSortOrder.NameAscending, new[] { "Mechanical Keyboard", "Monitor", "Mouse" })]
+    [InlineData(ProductSortOrder.NameDescending, new[] { "Mouse", "Monitor", "Mechanical Keyboard" })]
+    [InlineData(ProductSortOrder.PriceAscending, new[] { "Mouse", "Mechanical Keyboard", "Monitor" })]
+    [InlineData(ProductSortOrder.PriceDescending, new[] { "Monitor", "Mechanical Keyboard", "Mouse" })]
+    public async Task SearchAsync_SortsByTheRequestedOrder(ProductSortOrder sortOrder, string[] expected)
+    {
+        using var context = _fixture.CreateContext(_dateTimeProvider, _currentUser, _publisher);
+        var repository = await SeedCatalogAsync(context);
+
+        var products = await repository.SearchAsync(
+            new ProductSearchCriteria(SortOrder: sortOrder), TestContext.Current.CancellationToken);
+
+        products.Select(product => product.Name).ShouldBe(expected);
+    }
+
+    [Fact]
+    public async Task StockQuantity_RoundTrips()
+    {
+        using var context = _fixture.CreateContext(_dateTimeProvider, _currentUser, _publisher);
+        var repository = new ProductRepository(context);
+        var product = Product.Create(
+            "Stocked", "d", Money.Create(1m, "USD").Value, Sku.Create("SKU-STOCK").Value, stockQuantity: 4).Value;
+        repository.Add(product);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        context.ChangeTracker.Clear();
+
+        var loaded = await repository.GetByIdAsync(product.Id, TestContext.Current.CancellationToken);
+
+        loaded.ShouldNotBeNull().StockQuantity.ShouldBe(4);
     }
 
     [Fact]
@@ -90,7 +152,7 @@ public sealed class ProductRepositoryTests : IDisposable
         context.ChangeTracker.Clear();
 
         var byId = await repository.GetByIdAsync(deleted.Id, TestContext.Current.CancellationToken);
-        var all = await repository.GetAllAsync(cancellationToken: TestContext.Current.CancellationToken);
+        var all = await repository.SearchAsync(new ProductSearchCriteria(), TestContext.Current.CancellationToken);
         var skuExists = await repository.ExistsBySkuAsync("SKU-DEL", TestContext.Current.CancellationToken);
         var unfiltered = await context.Products
             .IgnoreQueryFilters([ApplicationDbContext.SoftDeleteFilter])
@@ -137,4 +199,16 @@ public sealed class ProductRepositoryTests : IDisposable
 
     private static Product NewProduct(string name, string sku) =>
         Product.Create(name, "d", Money.Create(1m, "USD").Value, Sku.Create(sku).Value).Value;
+
+    private static async Task<ProductRepository> SeedCatalogAsync(ApplicationDbContext context)
+    {
+        var repository = new ProductRepository(context);
+        repository.Add(Product.Create("Mouse", "Wireless optical mouse", Money.Create(20m, "USD").Value, Sku.Create("SKU-M1").Value).Value);
+        repository.Add(Product.Create("Mechanical Keyboard", "Wireless, hot-swappable", Money.Create(80m, "USD").Value, Sku.Create("SKU-K1").Value).Value);
+        repository.Add(Product.Create("Monitor", "27 inch display", Money.Create(300m, "USD").Value, Sku.Create("SKU-D1").Value).Value);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        context.ChangeTracker.Clear();
+
+        return repository;
+    }
 }

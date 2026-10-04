@@ -24,7 +24,10 @@ public static class AuthenticationExtensions
                 .AddRequirements(new ScopeRequirement(Scopes.ProductsWrite)))
             .AddPolicy(AuthorizationPolicies.OrdersWrite, policy => policy
                 .RequireAuthenticatedUser()
-                .AddRequirements(new ScopeRequirement(Scopes.OrdersWrite)));
+                .AddRequirements(new ScopeRequirement(Scopes.OrdersWrite)))
+            .AddPolicy(AuthorizationPolicies.OrdersFulfill, policy => policy
+                .RequireAuthenticatedUser()
+                .AddRequirements(new ScopeRequirement(Scopes.OrdersFulfill)));
 
         return services;
     }

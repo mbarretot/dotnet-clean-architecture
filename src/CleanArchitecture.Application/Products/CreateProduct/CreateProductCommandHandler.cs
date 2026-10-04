@@ -29,7 +29,8 @@ public sealed class CreateProductCommandHandler(
             return Result.Failure<Guid>(priceResult.Error);
         }
 
-        var productResult = Product.Create(request.Name, request.Description, priceResult.Value, skuResult.Value);
+        var productResult = Product.Create(
+            request.Name, request.Description, priceResult.Value, skuResult.Value, request.StockQuantity);
         if (productResult.IsFailure)
         {
             return Result.Failure<Guid>(productResult.Error);

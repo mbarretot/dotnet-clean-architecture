@@ -15,8 +15,8 @@ public sealed class CancelOrder : IEndpoint
             .RequireAuthorization(AuthorizationPolicies.OrdersWrite)
             .WithSummary("Cancel one of my orders")
             .WithDescription(
-                "Cancels the caller's order with the given identifier. Cancelling an already cancelled order returns " +
-                "409; another customer's order returns 404.")
+                "Cancels the caller's placed or paid order and releases its reserved stock. Cancelling an order that " +
+                "is already cancelled, shipped or completed returns 409; another customer's order returns 404.")
             .Produces(StatusCodes.Status204NoContent)
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict);

@@ -4,6 +4,7 @@ using CleanArchitecture.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using Respawn;
@@ -42,6 +43,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     {
         await using var connection = await OpenConnectionAsync();
         await _respawner.ResetAsync(connection);
+
+        // The host outlives each test; cached reads of rows Respawn just deleted must go too.
+        await Services.GetRequiredService<HybridCache>().RemoveByTagAsync("*");
     }
 
     public HttpClient CreateClient(string? accessToken)

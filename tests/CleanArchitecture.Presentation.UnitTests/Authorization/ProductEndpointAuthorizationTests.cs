@@ -38,7 +38,7 @@ public sealed class ProductEndpointAuthorizationTests : IAsyncLifetime
             .ToList();
 
     [Fact]
-    public void ProductEndpoints_ShouldExist() => ProductEndpoints.Count.ShouldBe(5);
+    public void ProductEndpoints_ShouldExist() => ProductEndpoints.Count.ShouldBe(6);
 
     [Fact]
     public void EveryProductEndpoint_ShouldRequireAuthorizationAndNotAllowAnonymous()
@@ -67,7 +67,7 @@ public sealed class ProductEndpointAuthorizationTests : IAsyncLifetime
     {
         var writeEndpoints = ProductEndpoints.Where(endpoint => !IsReadOnly(endpoint)).ToList();
 
-        writeEndpoints.Count.ShouldBe(3);
+        writeEndpoints.Count.ShouldBe(4);
         writeEndpoints.ShouldAllBe(endpoint => endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>()
             .Any(authorizeData => authorizeData.Policy == AuthorizationPolicies.ProductsWrite));
     }

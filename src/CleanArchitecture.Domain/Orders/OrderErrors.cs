@@ -19,6 +19,9 @@ public static class OrderErrors
     public static readonly Error AlreadyCancelled =
         Error.Conflict("Order.AlreadyCancelled", "The order has already been cancelled.");
 
+    public static Error InvalidStatusTransition(OrderStatus from, OrderStatus to) =>
+        Error.Conflict("Order.InvalidStatusTransition", $"An order in status '{from}' cannot move to '{to}'.");
+
     public static Error NotFound(Guid orderId) =>
         Error.NotFound("Order.NotFound", $"The order with identifier '{orderId}' was not found.");
 

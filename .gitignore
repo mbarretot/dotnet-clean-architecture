@@ -35,3 +35,6 @@ coverage/
 !*.tfvars.example
 crash.log
 crash.*.log
+
+# Snapshot tests: received files are local diffs, never committed.
+*.received.*

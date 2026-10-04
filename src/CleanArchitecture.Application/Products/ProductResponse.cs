@@ -6,4 +6,5 @@ public sealed record ProductResponse(
     string Description,
     decimal Price,
     string Currency,
-    string Sku);
+    string Sku,
+    int StockQuantity);

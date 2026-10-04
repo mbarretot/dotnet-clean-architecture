@@ -184,6 +184,12 @@ namespace CleanArchitecture.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(64)")
                         .HasColumnName("sku");
 
+                    b.Property<int>("StockQuantity")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("stock_quantity");
+
                     b.Property<uint>("Version")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -198,7 +204,10 @@ namespace CleanArchitecture.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_products_sku")
                         .HasFilter("is_deleted = FALSE");
 
-                    b.ToTable("products", (string)null);
+                    b.ToTable("products", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_products_stock_quantity_non_negative", "stock_quantity >= 0");
+                        });
                 });
 
             modelBuilder.Entity("CleanArchitecture.Domain.Orders.OrderLine", b =>

@@ -7,4 +7,6 @@ public static class Scopes
     public const string ProductsWrite = "products:write";
 
     public const string OrdersWrite = "orders:write";
+
+    public const string OrdersFulfill = "orders:fulfill";
 }

@@ -21,7 +21,7 @@ public sealed class ProductLifecycleTests(ApiFactory factory) : IntegrationTest(
         createResponse.Headers.Location.ShouldNotBeNull().OriginalString.ShouldBe($"/api/products/{id}");
 
         var created = await client.GetFromJsonAsync<ProductResponse>($"/api/products/{id}", CancellationToken);
-        created.ShouldBe(new ProductResponse(id, "Mechanical Keyboard", "Hot-swappable switches", 129.99m, "USD", "KB-001"));
+        created.ShouldBe(new ProductResponse(id, "Mechanical Keyboard", "Hot-swappable switches", 129.99m, "USD", "KB-001", 100));
 
         var listed = await client.GetFromJsonAsync<List<ProductResponse>>("/api/products", CancellationToken);
         listed.ShouldNotBeNull().ShouldHaveSingleItem().ShouldBe(created);
@@ -31,7 +31,7 @@ public sealed class ProductLifecycleTests(ApiFactory factory) : IntegrationTest(
         updateResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
 
         var updated = await client.GetFromJsonAsync<ProductResponse>($"/api/products/{id}", CancellationToken);
-        updated.ShouldBe(new ProductResponse(id, "Wireless Keyboard", "Bluetooth", 99.50m, "EUR", "KB-001"));
+        updated.ShouldBe(new ProductResponse(id, "Wireless Keyboard", "Bluetooth", 99.50m, "EUR", "KB-001", 100));
 
         var deleteResponse = await client.DeleteAsync($"/api/products/{id}", CancellationToken);
         deleteResponse.StatusCode.ShouldBe(HttpStatusCode.NoContent);

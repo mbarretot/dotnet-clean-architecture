@@ -8,6 +8,8 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
 {
     private const string IsDeletedColumn = "is_deleted";
 
+    private const string StockQuantityColumn = "stock_quantity";
+
     public void Configure(EntityTypeBuilder<Product> builder)
     {
         builder.ToTable("products");
@@ -46,6 +48,15 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
         });
 
         builder.Navigation(product => product.Price).IsRequired();
+
+        // Named explicitly because the check constraint's SQL must match it under every naming convention.
+        builder.Property(product => product.StockQuantity)
+            .HasColumnName(StockQuantityColumn)
+            .HasDefaultValue(0)
+            .IsRequired();
+
+        builder.ToTable(table => table.HasCheckConstraint(
+            "ck_products_stock_quantity_non_negative", $"{StockQuantityColumn} >= 0"));
 
         builder.Property(product => product.IsDeleted)
             .HasColumnName(IsDeletedColumn)

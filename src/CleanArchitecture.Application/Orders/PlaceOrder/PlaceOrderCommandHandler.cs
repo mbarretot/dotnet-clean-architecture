@@ -48,6 +48,16 @@ public sealed class PlaceOrderCommandHandler(
         }
 
         var order = orderResult.Value;
+
+        foreach (var line in order.Lines)
+        {
+            var reserveResult = products[line.ProductId].ReserveStock(line.Quantity);
+            if (reserveResult.IsFailure)
+            {
+                return Result.Failure<Guid>(reserveResult.Error);
+            }
+        }
+
         order.CreatedAt = dateTimeProvider.UtcNow;
 
         orderRepository.Add(order);
