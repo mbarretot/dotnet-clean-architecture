@@ -1,0 +1,44 @@
+name: Badges
+
+# Publishes the test-count and coverage badges that README.md reads through shields.io. Runs after CI on main
+# rather than inside it, because CI is also called from CD with read-only permissions.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: badges
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    name: Publish badges
+    if: github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download badge data from the CI run
+        uses: actions/download-artifact@v8
+        with:
+          name: badges
+          path: badges
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Push to the badges branch
+        env:
+          REPOSITORY: ${{ github.repository }}
+          TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          cd badges
+          git init --quiet --initial-branch=badges
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- *.json
+          git commit --quiet -m "Update badges for ${HEAD_SHA::7}"
+          git push --force --quiet "https://x-access-token:${TOKEN}@github.com/${REPOSITORY}.git" badges:badges

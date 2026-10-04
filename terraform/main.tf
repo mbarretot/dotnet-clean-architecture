@@ -39,6 +39,15 @@ resource "azurerm_container_app" "api" {
     value = local.database_connection_string
   }
 
+  dynamic "secret" {
+    for_each = var.cache_connection_string == null ? [] : [var.cache_connection_string]
+
+    content {
+      name  = "cache-connection-string"
+      value = secret.value
+    }
+  }
+
   template {
     container {
       name   = "api"
@@ -49,6 +58,15 @@ resource "azurerm_container_app" "api" {
       env {
         name        = "ConnectionStrings__Database"
         secret_name = "database-connection-string"
+      }
+
+      dynamic "env" {
+        for_each = var.cache_connection_string == null ? [] : ["cache-connection-string"]
+
+        content {
+          name        = "ConnectionStrings__Cache"
+          secret_name = env.value
+        }
       }
 
       env {
@@ -85,6 +103,8 @@ resource "azurerm_container_app" "api" {
 }
 
 resource "azurerm_postgresql_flexible_server" "this" {
+  #checkov:skip=CKV_AZURE_136:Dev-sized burstable server; geo-redundant backup is a per-environment cost decision.
+  #checkov:skip=CKV2_AZURE_57:Public access with a firewall keeps the reference deployment VNet-free; see ADR-0012.
   name                   = "psql-${local.resource_prefix}"
   resource_group_name    = azurerm_resource_group.this.name
   location               = azurerm_resource_group.this.location
@@ -107,6 +127,7 @@ resource "azurerm_postgresql_flexible_server_database" "this" {
 }
 
 resource "azurerm_postgresql_flexible_server_firewall_rule" "allow_azure_services" {
+  #checkov:skip=CKV2_AZURE_26:0.0.0.0 is Azure's "allow Azure services" rule the Container App needs without a VNet.
   name             = "AllowAzureServices"
   server_id        = azurerm_postgresql_flexible_server.this.id
   start_ip_address = "0.0.0.0"
