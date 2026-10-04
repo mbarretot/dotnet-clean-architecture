@@ -1,6 +1,7 @@
 # 14. Order aggregate references products by id and snapshots name and price
 
-- **Status:** Accepted
+- **Status:** Accepted; amended by [ADR-0015](0015-product-stock-reserved-with-the-order.md) (stock reservation
+  writes products in the order's transaction)
 - **Date:** 2026-09-24
 
 ## Context
