@@ -1,4 +1,4 @@
-<Project Sdk="Aspire.AppHost.Sdk/13.4.6">
+<Project Sdk="Aspire.AppHost.Sdk/13.5.4">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -7,6 +7,7 @@
     <Nullable>enable</Nullable>
     <!-- Keeps dotnet build independent of the local Aspire CLI bundle. -->
     <AspireUseCliBundle>false</AspireUseCliBundle>
+    <NoWarn>$(NoWarn);ASPIRE010</NoWarn>
     <UserSecretsId>ceec52ad-a74a-4a3a-87ef-40e254551abe</UserSecretsId>
   </PropertyGroup>
 
