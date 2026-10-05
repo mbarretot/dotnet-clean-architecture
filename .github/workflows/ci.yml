@@ -111,7 +111,8 @@ jobs:
         shell: python
         run: |
           import json, os, re, xml.etree.ElementTree as ET
-          log = open("test-output.log", encoding="utf-8").read()
+          # The runner's dotnet test output carries ANSI colour codes at line starts; strip them first.
+          log = re.sub(r"\x1b\[[0-9;]*m", "", open("test-output.log", encoding="utf-8").read())
           total = int(re.findall(r"^\s*total:\s*(\d+)", log, re.M)[-1])
           failed = int(re.findall(r"^\s*failed:\s*(\d+)", log, re.M)[-1])
           line = float(ET.parse("TestResults/coverage-report/Cobertura.xml").getroot().get("line-rate")) * 100
