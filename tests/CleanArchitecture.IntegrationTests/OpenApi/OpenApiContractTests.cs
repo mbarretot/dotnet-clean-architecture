@@ -7,12 +7,6 @@ using Shouldly;
 
 namespace CleanArchitecture.IntegrationTests.OpenApi;
 
-/// <summary>
-/// Pins the published contract: any change to routes, parameters, schemas or responses fails this test until the
-/// approved snapshot is updated in the same change, so contract drift is always reviewed. On a mismatch the actual
-/// document is written next to it as <c>*.received.json</c>; approve it by replacing the approved file, or run the
-/// tests with <c>UPDATE_SNAPSHOTS=1</c>.
-/// </summary>
 [Collection(IntegrationTestCollection.Name)]
 public sealed class OpenApiContractTests(ApiFactory factory) : IntegrationTest(factory)
 {
