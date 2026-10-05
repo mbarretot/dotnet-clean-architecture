@@ -5,44 +5,38 @@
 
 ## Context
 
-The HTTP layer is thin: each endpoint binds a request, sends one command or query, and maps the `Result` to a
-response. MVC controllers add a class hierarchy, filters, and model-binding conventions this layer does not need.
-Plain Minimal APIs, on the other hand, tend to pile every `MapGet`/`MapPost` into `Program.cs`.
+HTTP handlers only bind requests, dispatch use cases and map results. Controllers add unused conventions; unstructured Minimal APIs crowd Program.cs.
 
 ## Decision
 
-Use ASP.NET Core Minimal APIs, with one class per endpoint discovered by assembly scanning.
+Use one `IEndpoint` class per route, discovered by assembly scanning. Each declares its metadata, authorization and typed responses; Program remains the composition root.
 
-- Each endpoint implements [`IEndpoint`](../../src/CleanArchitecture.Presentation/Endpoints/IEndpoint.cs)
-  (`MapEndpoint(IEndpointRouteBuilder)`) and lives next to its feature, e.g.
-  [`Endpoints/Products/GetProducts.cs`](../../src/CleanArchitecture.Presentation/Endpoints/Products/GetProducts.cs).
-- [`EndpointExtensions.AddEndpoints`](../../src/CleanArchitecture.Presentation/Extensions/EndpointExtensions.cs)
-  registers every concrete `IEndpoint` in the assembly; `MapEndpoints` resolves and maps them; `MapApi` also maps
-  health probes, the OpenAPI document, and Scalar (Development only).
-- [`Program.cs`](../../src/CleanArchitecture.Presentation/Program.cs) only calls `AddEndpoints` and `MapApi`; adding
-  an endpoint never touches it.
-- Endpoints declare their own metadata (name, tags, summary, `Produces`, authorization policy) and return
-  `TypedResults`, which feeds the built-in OpenAPI document (`Microsoft.AspNetCore.OpenApi`, rendered by Scalar).
+## Outcome
+
+Adding an endpoint does not require editing Program; names, tags, summaries and response schemas feed built-in OpenAPI. `MapApi` also exposes health probes and OpenAPI, with Scalar restricted to Development.
 
 ## Consequences
 
-**Positive**
+### Benefits
 
-- One small file per route: easy to find, review, and delete.
-- `Program.cs` stays a short composition root.
-- Typed results give accurate OpenAPI metadata and make handlers unit-testable.
+- Small feature-local files are easy to find and review.
+- Typed responses feed OpenAPI metadata and support focused tests.
 
-**Negative**
+### Trade-offs
 
-- Discovery is reflection-based at startup and implicit: a class that forgets to implement `IEndpoint` is silently
-  not mapped (integration tests are the safety net).
-- Per-group conventions (a shared route prefix, shared filters) are repeated in each endpoint rather than declared
-  once on a `MapGroup`.
-- Assembly scanning is not trimming/AOT-friendly without extra work.
+- Forgetting `IEndpoint` silently prevents route discovery; integration tests are the safety net.
+- Per-endpoint metadata/conventions can repeat.
+- Reflection discovery needs additional work for trimming/AOT.
 
-## Alternatives considered
+## Alternatives
 
-- **MVC controllers.** Familiar and convention-rich; heavier for thin handlers.
-- **All routes in `Program.cs`.** Fine for a demo, unmanageable as endpoints grow.
-- **Carter or FastEndpoints.** Provide the same modular pattern plus more; an extra dependency for what is here a
-  ten-line interface and extension method.
+- **MVC controllers:** familiar, but heavier for thin handlers.
+- **Program-only routes:** simple initially, difficult to navigate at scale.
+- **Carter/FastEndpoints:** modular discovery plus features, but an extra dependency.
+
+## References
+
+- [Endpoint contract](../../src/CleanArchitecture.Presentation/Endpoints/IEndpoint.cs)
+- [Discovery and mapping](../../src/CleanArchitecture.Presentation/Extensions/EndpointExtensions.cs)
+- [Example endpoint](../../src/CleanArchitecture.Presentation/Endpoints/Products/GetProducts.cs)
+- [HTTP lifecycle tests](../../tests/CleanArchitecture.IntegrationTests/Products/ProductLifecycleTests.cs)

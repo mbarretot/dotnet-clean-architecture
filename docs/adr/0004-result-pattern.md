@@ -5,52 +5,39 @@
 
 ## Context
 
-Use cases routinely fail for expected reasons: invalid input, an unknown product, a duplicate SKU. Throwing for
-these makes failure paths invisible in method signatures, couples the domain to HTTP-flavoured exception types, and
-turns control flow into `try/catch`.
+Invalid input, missing products and duplicate SKUs are expected failures. Exceptions hide these paths and risk coupling business rules to HTTP.
 
 ## Decision
 
-Model expected failures as values; reserve exceptions for bugs and infrastructure faults.
+Return `Result`/`Result<T>` with typed errors for expected failures; reserve exceptions for unexpected faults. Validation produces failed results, constructors reject inconsistent success/error combinations, and Presentation centrally translates errors into ProblemDetails.
 
-- [`Result`](../../src/CleanArchitecture.SharedKernel/Results/Result.cs) and
-  [`Result<T>`](../../src/CleanArchitecture.SharedKernel/Results/ResultOfT.cs) carry success or an
-  [`Error`](../../src/CleanArchitecture.SharedKernel/Results/Error.cs) (code, description,
-  [`ErrorType`](../../src/CleanArchitecture.SharedKernel/Results/ErrorType.cs)). The constructor rejects invalid
-  combinations (a success with an error, a failure without one).
-- Domain errors are declared once, e.g.
-  [`ProductErrors`](../../src/CleanArchitecture.Domain/Products/ProductErrors.cs).
-- Every command and query returns `Result` / `Result<T>` by contract (see [ADR-0003](0003-in-house-mediator.md)).
-- [`ValidationBehavior`](../../src/CleanArchitecture.Application/Behaviors/ValidationBehavior.cs) turns
-  FluentValidation failures into a failed result with a
-  [`ValidationError`](../../src/CleanArchitecture.SharedKernel/Results/ValidationError.cs) instead of throwing.
-- Presentation maps errors to RFC 7807 responses in
-  [`ResultExtensions.ToProblem`](../../src/CleanArchitecture.Presentation/Extensions/ResultExtensions.cs):
-  `Validation` → 400 validation problem, `NotFound` → 404, `Conflict` → 409, `Unauthorized` → 401,
-  `Failure`/`Problem` → 400.
-- Anything thrown is caught by
-  [`GlobalExceptionHandler`](../../src/CleanArchitecture.Presentation/Middleware/GlobalExceptionHandler.cs), logged
-  in full, and returned as a generic 500 `ProblemDetails` without internal details.
+## Outcome
+
+Validation/failure/problem errors map to 400, not-found to 404, conflict to 409 and unauthorized to 401; unexpected exceptions are logged and return a generic 500.
 
 ## Consequences
 
-**Positive**
+### Benefits
 
-- Failure modes are visible in the signature, and handlers read as straight-line code.
-- The domain stays free of HTTP concerns; one mapping table decides status codes.
-- Error codes (`Product.NotFound`, `Product.SkuAlreadyExists`) are stable, testable contract values.
+- Signatures expose expected failure paths.
+- Stable error codes are testable while the domain remains HTTP-independent.
 
-**Negative**
+### Trade-offs
 
-- More ceremony than throwing: every call site checks `IsFailure` or uses `Match` / `Bind`
-  ([`SharedKernel/Results/ResultExtensions.cs`](../../src/CleanArchitecture.SharedKernel/Results/ResultExtensions.cs)).
-- Failures raised by the database rather than by code still arrive as exceptions and become 500s. For example, a
-  concurrent duplicate SKU that slips past `ExistsBySkuAsync` hits the unique index, and a concurrency conflict
-  ([ADR-0007](0007-optimistic-concurrency-xmin.md)) is not translated to 409.
-- `ValidationBehavior` needs a compiled factory to build a failed `Result<T>` generically.
+- Callers must explicitly inspect or compose results; generic validation needs a compiled result factory.
+- Database-only failures, such as a concurrent duplicate SKU, still arrive as exceptions.
+- Concurrency originally returned 500; [ADR-0015](0015-product-stock-reserved-with-the-order.md) later introduced the 409 `Concurrency.Conflict` mapping.
 
-## Alternatives considered
+## Alternatives
 
-- **Exceptions plus exception-to-status middleware.** Less code per call site; failure paths become implicit and
-  exceptions are costly on hot paths.
-- **A library such as ErrorOr, FluentResults or OneOf.** Richer APIs; another dependency for a small, stable type.
+- **Exception-driven control flow:** fewer checks, but implicit failure paths.
+- **ErrorOr/FluentResults/OneOf:** richer utilities, but another dependency for a small contract.
+
+## References
+
+- [Result invariants](../../src/CleanArchitecture.SharedKernel/Results/Result.cs)
+- [Validation behavior](../../src/CleanArchitecture.Application/Behaviors/ValidationBehavior.cs)
+- [HTTP mapping](../../src/CleanArchitecture.Presentation/Extensions/ResultExtensions.cs)
+- [Exception mapping](../../src/CleanArchitecture.Presentation/Middleware/GlobalExceptionHandler.cs)
+- [Result tests](../../tests/CleanArchitecture.SharedKernel.UnitTests/Results/ResultTests.cs)
+- [ADR-0003](0003-in-house-mediator.md)

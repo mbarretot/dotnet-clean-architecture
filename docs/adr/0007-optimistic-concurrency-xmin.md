@@ -5,47 +5,38 @@
 
 ## Context
 
-Two requests can load the same aggregate and both save, the second silently overwriting the first. Guarding against
-lost updates usually means a version column that the application must maintain and the domain model must carry.
-PostgreSQL already maintains a per-row version: the `xmin` system column changes on every update.
+Overlapping load/save operations can overwrite an aggregate without detecting another writer. PostgreSQL already exposes a row version through `xmin`.
 
 ## Decision
 
-Map `xmin` as an EF Core concurrency token on every aggregate root (`Product`, `Order`), as a shadow property so the
-domain model stays unaware of it. The aggregate is the consistency boundary, so that is where concurrent writes are
-detected.
+Map `xmin` as a generated `uint` shadow concurrency token for every aggregate root, only under Npgsql. This detects conflicts without adding a version field to the domain or schema.
 
-- In [`ApplicationDbContext.OnModelCreating`](../../src/CleanArchitecture.Infrastructure/Persistence/ApplicationDbContext.cs)
-  every root entity type deriving from `AggregateRoot` gets a `uint` shadow property `Version` mapped to column
-  `xmin` (type `xid`), `ValueGeneratedOnAddOrUpdate`, `IsConcurrencyToken`.
-- The mapping is applied only when the provider is Npgsql. SQLite, used by the interceptor unit tests
-  ([`SqliteApplicationDbContextFixture`](../../tests/CleanArchitecture.Infrastructure.UnitTests/Persistence/Interceptors/SqliteApplicationDbContextFixture.cs)),
-  has no equivalent. That is why the mapping lives in the context rather than in each entity configuration, and new
-  aggregates get it with no extra wiring.
-- No migration adds a column: `xmin` exists on every PostgreSQL table.
+## Outcome
+
+EF includes the token in update predicates and throws `DbUpdateConcurrencyException` when the loaded version no longer matches; Product and Order share the convention.
 
 ## Consequences
 
-**Positive**
+### Benefits
 
-- Lost updates between load and save are detected: EF Core adds `xmin` to the `UPDATE ... WHERE` clause and throws
-  `DbUpdateConcurrencyException` when no row matches.
-- Zero schema cost and nothing for the domain or application layers to maintain.
+- Concurrent updates are detected without application-maintained version columns.
+- New aggregate roots inherit the mapping.
 
-**Negative**
+### Trade-offs
 
-- Scope is limited to a single unit of work. The version is not exposed to clients (no `ETag` / `If-Match`), so two
-  users editing the same product or order in separate requests still get last-write-wins.
-- `DbUpdateConcurrencyException` is not translated to a `Result`; it reaches the global exception handler as a 500
-  rather than a 409 (see [ADR-0004](0004-result-pattern.md)).
-- Behaviour is provider-specific: tests on SQLite do not exercise it, and there is no dedicated concurrency test.
-- `xmin` is a PostgreSQL implementation detail (it can also change on operations such as `VACUUM FULL`); moving to
-  another database means a real version column.
+- No ETag/If-Match contract: stale client edits across separate requests are not detected by a prior client version.
+- Exceptions originally surfaced as 500; [ADR-0015](0015-product-stock-reserved-with-the-order.md) later maps them to 409. Clients must reload/retry.
+- PostgreSQL-specific behavior is not exercised by SQLite unit fixtures; the original decision had no dedicated concurrency test.
 
-## Alternatives considered
+## Alternatives
 
-- **An explicit `Version`/`RowVersion` column maintained by the app.** Portable, but a schema column and
-  application code for something PostgreSQL already provides.
-- **Pessimistic locking (`SELECT ... FOR UPDATE`).** Strong guarantees, but holds locks and needs raw SQL or
-  provider-specific APIs.
-- **No concurrency control.** Simplest; accepts silent lost updates.
+- **Explicit version column:** portable, but needs schema and maintenance.
+- **Pessimistic locking:** holds locks and needs provider-specific access.
+- **No token:** simpler, but permits silent lost updates.
+
+## References
+
+- [Shadow-token mapping](../../src/CleanArchitecture.Infrastructure/Persistence/ApplicationDbContext.cs)
+- [SQLite fixture](../../tests/CleanArchitecture.Infrastructure.UnitTests/Persistence/Interceptors/SqliteApplicationDbContextFixture.cs)
+- [Current error mapping](../../src/CleanArchitecture.Presentation/Middleware/GlobalExceptionHandler.cs)
+- [ADR-0004](0004-result-pattern.md)

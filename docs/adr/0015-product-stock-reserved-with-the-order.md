@@ -5,53 +5,40 @@
 
 ## Context
 
-Orders could be placed for any quantity: the catalog had no notion of units on hand. Adding stock means an order and
-the products it reserves must change together, or a crash between the two leaves either an order without a
-reservation or a reservation without an order. [ADR-0014](0014-order-aggregate-references-products-by-id.md) chose
-one aggregate per transaction; that rule now has a deliberate exception.
+Orders previously accepted quantities without inventory checks. Reservation and order persistence must succeed together; this deliberately excepts [ADR-0014](0014-order-aggregate-references-products-by-id.md)’s original one-aggregate transaction rule.
 
 ## Decision
 
-`Product` owns its stock; placing an order reserves it and cancelling releases it, inside the same unit of work as the
-order change.
+Product owns nonnegative stock, initially zero. Reserve merged order quantities and save Product/Order changes once; cancellation releases stock in the same unit of work, skipping products deleted since placement.
 
-- [`Product`](../../src/CleanArchitecture.Domain/Products/Product.cs) has `StockQuantity` (zero by default, never
-  negative) and three operations: `SetStock` (replace, for catalog managers), `ReserveStock` (fails with the conflict
-  `Product.InsufficientStock`) and `ReleaseStock`. Each raises `ProductStockChangedDomainEvent`.
-- [`PlaceOrderCommandHandler`](../../src/CleanArchitecture.Application/Orders/PlaceOrder/PlaceOrderCommandHandler.cs)
-  places the order first (so lines for the same product are already merged), then reserves each line's quantity and
-  saves once. Any failure returns before `SaveChanges`, so nothing is persisted.
-- [`CancelOrderCommandHandler`](../../src/CleanArchitecture.Application/Orders/CancelOrder/CancelOrderCommandHandler.cs)
-  releases each line's quantity in the same save. A product soft-deleted since the order was placed is skipped.
-- `PUT /api/products/{id}/stock` sets the stock and requires `products:write`; `ProductResponse` exposes
-  `stockQuantity`, and `POST /api/products` accepts an optional initial `stockQuantity`.
-- Migration [`AddProductStock`](../../src/CleanArchitecture.Infrastructure/Persistence/Migrations/20261004183546_AddProductStock.cs)
-  adds `products.stock_quantity` (existing rows start at 0) and the check constraint
-  `ck_products_stock_quantity_non_negative` as a database backstop.
-- Concurrent reservations of the same product are serialized by the `xmin` token
-  ([ADR-0007](0007-optimistic-concurrency-xmin.md)). The loser's `DbUpdateConcurrencyException` is now translated by
-  [`GlobalExceptionHandler`](../../src/CleanArchitecture.Presentation/Middleware/GlobalExceptionHandler.cs) into a
-  409 `Concurrency.Conflict` problem instead of a 500, so clients can retry.
+## Outcome
+
+Insufficient stock returns `Product.InsufficientStock` (409) before any save. Domain operations raise stock events, a check constraint rejects negatives, and xmin conflicts become generic 409 `Concurrency.Conflict` responses requiring reload/retry.
 
 ## Consequences
 
-**Positive**
+### Benefits
 
-- Overselling is impossible: the domain rejects it, the check constraint backs it, and optimistic concurrency stops
-  two requests from both taking the last unit.
-- Order and stock changes are atomic without a saga or an outbox.
+- Stock and order writes are atomic without a saga or outbox.
+- Domain validation plus optimistic concurrency guard concurrent reservations against overselling.
 
-**Negative**
+### Trade-offs
 
-- One transaction now writes several aggregates. Contention on a popular product becomes 409s under load, and the
-  aggregates cannot move to separate databases without redesign (an outbox plus compensation).
-- Existing products start with zero stock after the migration and cannot be ordered until restocked.
-- The 409 for concurrency is generic: the client cannot tell which product conflicted.
+- Popular products create write contention; 409 does not identify the conflicting product.
+- Existing migrated products start at zero and need restocking; catalog writes can replace stock.
+- Multiple aggregates share a database transaction; separating their databases requires redesign/compensation.
 
-## Alternatives considered
+## Alternatives
 
-- **Eventual consistency via `OrderPlacedDomainEvent`.** Keeps one aggregate per transaction, but events are
-  dispatched after the commit ([ADR-0006](0006-domain-events-via-savechanges-interceptor.md)), so a failed
-  reservation would leave an accepted order behind.
-- **A separate `Inventory` aggregate.** Cleaner if stock grows warehouses or batches; premature for a single number.
-- **Pessimistic locking (`SELECT ... FOR UPDATE`).** No 409s, but holds row locks and needs provider-specific SQL.
+- **Post-commit event reservation:** may leave an accepted order without stock because [ADR-0006](0006-domain-events-via-savechanges-interceptor.md) is not durable.
+- **Inventory aggregate:** useful for warehouses/batches, premature for one quantity.
+- **Pessimistic locks:** reduce optimistic conflicts, but hold locks and need provider-specific SQL.
+
+## References
+
+- [Stock rules](../../src/CleanArchitecture.Domain/Products/Product.cs)
+- [Placement](../../src/CleanArchitecture.Application/Orders/PlaceOrder/PlaceOrderCommandHandler.cs)
+- [Cancellation](../../src/CleanArchitecture.Application/Orders/CancelOrder/CancelOrderCommandHandler.cs)
+- [Stock migration](../../src/CleanArchitecture.Infrastructure/Persistence/Migrations/20261004183546_AddProductStock.cs)
+- [Conflict mapping](../../src/CleanArchitecture.Presentation/Middleware/GlobalExceptionHandler.cs)
+- [ADR-0007](0007-optimistic-concurrency-xmin.md)

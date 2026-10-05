@@ -5,51 +5,39 @@
 
 ## Context
 
-Aggregates raise domain events (`ProductCreatedDomainEvent`, `ProductUpdatedDomainEvent`,
-`ProductDeletedDomainEvent` in [`Domain/Products/Events`](../../src/CleanArchitecture.Domain/Products/Events)) that
-other parts of the application react to. Handlers must not see an event for a change that was never saved, and
-use-case handlers should not have to remember to publish events themselves.
+Aggregates raise events, but consumers must not react to unsaved changes. Publishing explicitly in every use case is easy to forget.
 
 ## Decision
 
-Collect and publish domain events from an EF Core interceptor after `SaveChangesAsync` succeeds.
+Publish buffered domain events through a scoped EF Core `SavedChangesAsync` interceptor. After a successful save, it clears aggregate buffers and dispatches each event through the in-house publisher.
 
-- [`AggregateRoot`](../../src/CleanArchitecture.SharedKernel/Entities/AggregateRoot.cs) buffers events raised by the
-  aggregate.
-- [`DispatchDomainEventsInterceptor`](../../src/CleanArchitecture.Infrastructure/Persistence/Interceptors/DispatchDomainEventsInterceptor.cs)
-  overrides `SavedChangesAsync` (not `SavingChangesAsync`), gathers events from tracked aggregates, clears them, and
-  publishes each through `IPublisher` ([ADR-0003](0003-in-house-mediator.md)).
-- It is registered as scoped in
-  [`Infrastructure/DependencyInjection.cs`](../../src/CleanArchitecture.Infrastructure/DependencyInjection.cs), so
-  `UnitOfWork.SaveChangesAsync` triggers dispatch without handlers knowing about it.
-- Handlers derive from
-  [`DomainEventHandler<T>`](../../src/CleanArchitecture.SharedKernel/Messaging/DomainEventHandler.cs), e.g.
-  [`ProductCreatedDomainEventHandler`](../../src/CleanArchitecture.Application/Products/EventHandlers/ProductCreatedDomainEventHandler.cs).
+## Outcome
+
+Async unit-of-work saves trigger in-process notification handlers automatically; business handlers do not orchestrate publication.
 
 ## Consequences
 
-**Positive**
+### Benefits
 
-- Events are published only for changes the database accepted.
-- Use cases stay focused on the domain; dispatch is a persistence concern, applied uniformly.
-- Covered by [`DispatchDomainEventsInterceptorTests`](../../tests/CleanArchitecture.Infrastructure.UnitTests/Persistence/Interceptors/DispatchDomainEventsInterceptorTests.cs).
+- Publication follows successful persistence.
+- One interceptor applies the rule consistently.
 
-**Negative**
+### Trade-offs
 
-- **Not durable.** Events live only in memory. If the process stops between commit and dispatch, or a handler
-  fails, the event is lost; there is no retry.
-- A handler that throws surfaces as an exception from `SaveChangesAsync` *after* the data was committed, so the
-  client can receive a 500 for a change that succeeded.
-- Handlers run synchronously inside the request, adding their latency to it.
-- Only the async path is intercepted; a synchronous `SaveChanges()` would commit without dispatching.
+- No durable outbox or retry: crashes after save and handler failures can lose events; an outbox remains a reliability follow-up.
+- A throwing handler can produce HTTP 500 after data has already committed.
+- Handlers add request latency; synchronous `SaveChanges()` is not intercepted.
 
-**Follow-up:** a transactional outbox (persist events in the same transaction, dispatch from a background worker)
-is the known next step when events must reach other services reliably.
+## Alternatives
 
-## Alternatives considered
+- **Before-save dispatch:** handlers may react to changes later rolled back.
+- **Explicit handler publication:** visible, but duplicated and forgettable.
+- **Transactional outbox now:** durable/at-least-once, but more machinery than this single-service reference currently uses.
 
-- **Dispatch in `SavingChangesAsync` (before commit).** Handlers can join the transaction, but they may react to a
-  change that later rolls back.
-- **Publish explicitly from each command handler.** Visible, but easy to forget and duplicated.
-- **Transactional outbox now.** Durable and at-least-once; more moving parts than a single-service reference needs
-  today.
+## References
+
+- [Event buffer](../../src/CleanArchitecture.SharedKernel/Entities/AggregateRoot.cs)
+- [Interceptor](../../src/CleanArchitecture.Infrastructure/Persistence/Interceptors/DispatchDomainEventsInterceptor.cs)
+- [Interceptor tests](../../tests/CleanArchitecture.Infrastructure.UnitTests/Persistence/Interceptors/DispatchDomainEventsInterceptorTests.cs)
+- [ADR-0003](0003-in-house-mediator.md)
+- [ADR-0017](0017-hybridcache-for-product-reads.md)
