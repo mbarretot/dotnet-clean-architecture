@@ -5,38 +5,37 @@
 
 ## Context
 
-The API had no way to evolve a contract without breaking existing clients. Adding versioning later would itself be a
-breaking change if it moved routes, so the mechanism has to fit the current URLs.
+Contracts need an evolution path without changing every existing route. Introducing versioning must not itself break unversioned clients.
 
 ## Decision
 
-Use `Asp.Versioning` with the version read from the `api-version` query parameter or the `X-Api-Version` header, and
-`1.0` assumed when neither is sent.
+Read versions from the api-version query parameter or X-Api-Version header, defaulting to 1.0. Map IEndpoint implementations into an Asp.Versioning route group and generate one OpenAPI document per version.
 
-- [`EndpointExtensions`](../../src/CleanArchitecture.Presentation/Extensions/EndpointExtensions.cs) registers
-  versioning and maps every `IEndpoint` into a versioned route group with
-  [`ApiVersions.V1`](../../src/CleanArchitecture.Presentation/Endpoints/ApiVersions.cs). Endpoints stay unaware of
-  versions until one actually needs a v2.
-- Responses report `api-supported-versions`; an unsupported version is a 400 problem
-  (`https://docs.api-versioning.org/problems#unsupported`).
-- [`OpenApiExtensions`](../../src/CleanArchitecture.Presentation/Extensions/OpenApiExtensions.cs) uses
-  `Asp.Versioning.OpenApi`: one document per version (`/openapi/v1.json`, unchanged path) with the same security
-  transformers, and the version parameter and header documented on each operation.
-- Health and OpenAPI endpoints are not versioned.
+## Outcome
+
+Current URLs and `/openapi/v1.json` remain unchanged. Responses advertise supported versions; unsupported versions return 400, while health/document endpoints remain unversioned. Each operation documents both version inputs and retains the existing security transformers.
 
 ## Consequences
 
-**Positive**
+### Benefits
 
-- Existing clients and URLs keep working; a v2 is one more route group, with its own OpenAPI document.
-- The approved OpenAPI snapshot ([ADR-0019](0019-quality-gates-in-ci.md)) makes any contract change visible.
+- Existing clients continue without sending a version.
+- Future groups can carry distinct contracts and documentation; the approved snapshot exposes contract drift.
 
-**Negative**
+### Trade-offs
 
-- Query and header versions are less visible than `/v1/` in the path and are easy to drop in caches or proxies.
-- Asp.Versioning's analyzers require its OpenAPI integration, so document generation now goes through its API.
+- Query/header versions are less visible than path versions and may be dropped by caches/proxies.
+- Document generation depends on Asp.Versioning’s OpenAPI integration and analyzers.
 
-## Alternatives considered
+## Alternatives
 
-- **URL segment (`/api/v1/products`).** Most explicit, but changes every route and breaks every client today.
-- **Media-type versioning.** Precise, but awkward for browsers, Scalar and simple clients.
+- **URL segments:** explicit, but would change current routes.
+- **Media types:** precise, but awkward for browsers, Scalar and simple clients.
+
+## References
+
+- [Versioned mapping](../../src/CleanArchitecture.Presentation/Extensions/EndpointExtensions.cs)
+- [Version constants](../../src/CleanArchitecture.Presentation/Endpoints/ApiVersions.cs)
+- [Document generation](../../src/CleanArchitecture.Presentation/Extensions/OpenApiExtensions.cs)
+- [Version tests](../../tests/CleanArchitecture.IntegrationTests/Versioning/ApiVersioningTests.cs)
+- [ADR-0019](0019-quality-gates-in-ci.md)

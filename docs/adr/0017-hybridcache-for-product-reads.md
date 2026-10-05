@@ -5,45 +5,39 @@
 
 ## Context
 
-Catalog reads (`GET /api/products`, `GET /api/products/{id}`) dominate traffic and change rarely, while every write
-already raises a domain event after it commits ([ADR-0006](0006-domain-events-via-savechanges-interceptor.md)).
+Product reads can repeat unchanged data while product writes already raise post-save events. Caching should remain independent of Infrastructure references in Application.
 
 ## Decision
 
-Cache product query results with `Microsoft.Extensions.Caching.Hybrid` (in-process L1, optional Redis L2) and drop
-them by tag whenever a product changes.
+Cache ProductResponse DTOs with HybridCache: in-process L1 and optional Redis L2. Key every page/filter/sort combination separately and invalidate the products tag on created/updated/deleted/stock-changed events.
 
-- [`GetProductByIdQueryHandler`](../../src/CleanArchitecture.Application/Products/GetProductById/GetProductByIdQueryHandler.cs)
-  and [`GetProductsQueryHandler`](../../src/CleanArchitecture.Application/Products/GetProducts/GetProductsQueryHandler.cs)
-  depend on the `HybridCache` abstraction (no Infrastructure reference) and cache `ProductResponse` DTOs, never
-  entities. Keys come from [`ProductCacheKeys`](../../src/CleanArchitecture.Application/Products/ProductCacheKeys.cs);
-  list keys include every filter, so each page/search/sort combination is its own entry. Every entry carries the
-  `products` tag.
-- [`ProductCacheInvalidationHandler`](../../src/CleanArchitecture.Application/Products/EventHandlers/ProductCacheInvalidationHandler.cs)
-  handles the created, updated, deleted and stock-changed events with `RemoveByTagAsync("products")`. Because events
-  are dispatched after `SaveChanges`, the cache never sees an uncommitted change.
-- [`AddInfrastructure`](../../src/CleanArchitecture.Infrastructure/DependencyInjection.cs) registers HybridCache
-  (5 min expiry, 1 min in-process) and, when `ConnectionStrings:Cache` is set, StackExchange.Redis as the
-  distributed tier. The Aspire AppHost and Docker Compose provide Redis; Terraform takes an optional
-  `cache_connection_string`. Without it the API caches in process only.
-- The integration-test host clears the cache (`RemoveByTagAsync("*")`) whenever Respawn resets the database.
+## Outcome
+
+Repeated reads and concurrent same-key misses can reuse cached results. Infrastructure sets five-minute expiry and one-minute L1; orchestration supplies Redis, Terraform accepts a connection string, and test resets clear cache.
 
 ## Consequences
 
-**Positive**
+### Benefits
 
-- Repeated reads skip the database; HybridCache also collapses concurrent misses for the same key into one query.
-- Writes cannot leave stale entries behind on the instance that handled them, and the policy is a single class.
+- Queries avoid caching tracked entities.
+- One event-handler class centralizes invalidation after persistence.
 
-**Negative**
+### Trade-offs
 
-- Invalidation is coarse: any product change empties every product entry, including unrelated searches.
-- With several replicas and no Redis, another replica can serve a stale entry for up to the 1 minute L1 lifetime.
-  Tag invalidation does reach other replicas through Redis, but only after their L1 entries expire.
-- Unknown ids are cached as "not found" until the next product change or expiry.
+- Any product write invalidates all product entries, including unrelated searches.
+- Other replicas can serve stale L1 entries until expiry, including when Redis is present; invalidation is not instantaneous across replicas.
+- Unknown IDs cache as not-found until invalidation/expiry; delivery inherits [ADR-0006](0006-domain-events-via-savechanges-interceptor.md)’s in-process failure limitations.
 
-## Alternatives considered
+## Alternatives
 
-- **Output caching at the HTTP layer.** Simpler, but keyed by URL and user, and blind to domain events.
-- **`IMemoryCache` / `IDistributedCache` directly.** No tags and no stampede protection; HybridCache wraps both.
-- **Per-product tags.** Finer invalidation, but every list entry would need the tags of all products it contains.
+- **HTTP output caching:** URL/user-driven and disconnected from domain events.
+- **Direct memory/distributed caches:** require implementing tags/stampede handling.
+- **Per-product tags:** finer, but lists need tags for every included product.
+
+## References
+
+- [Query caching](../../src/CleanArchitecture.Application/Products/GetProducts/GetProductsQueryHandler.cs)
+- [Keys](../../src/CleanArchitecture.Application/Products/ProductCacheKeys.cs)
+- [Invalidation](../../src/CleanArchitecture.Application/Products/EventHandlers/ProductCacheInvalidationHandler.cs)
+- [Registration](../../src/CleanArchitecture.Infrastructure/DependencyInjection.cs)
+- [Invalidation tests](../../tests/CleanArchitecture.Application.UnitTests/Products/EventHandlers/ProductCacheInvalidationHandlerTests.cs)

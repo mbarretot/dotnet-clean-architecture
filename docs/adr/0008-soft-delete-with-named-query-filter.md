@@ -5,48 +5,39 @@
 
 ## Context
 
-`DELETE` used to "deactivate" a product through an `is_active` flag: the product stayed visible in every read (with
-`isActive: false`) and its SKU stayed taken by the unique index. Deleting rows outright would lose history and break
-references from past orders. A deleted product must behave as gone (404, SKU reusable) while its record is kept.
+Deactivation left products visible and SKUs unavailable; hard deletion loses history. Deleted products should read as absent while retained records preserve the past.
 
 ## Decision
 
-Soft-delete products, hide deleted rows with a named EF Core global query filter, and scope SKU uniqueness to
-non-deleted rows.
+Soft-delete through `ISoftDeletable`, apply a named global filter, and enforce SKU uniqueness only where `is_deleted = FALSE`. Audit deletion once; migrate old flags using `is_deleted = NOT is_active`, not a rename.
 
-- [`ISoftDeletable`](../../src/CleanArchitecture.SharedKernel/Entities/ISoftDeletable.cs) exposes `IsDeleted`,
-  `DeletedOnUtc`, `DeletedBy`. [`Product.Delete()`](../../src/CleanArchitecture.Domain/Products/Product.cs) sets the
-  flag idempotently and raises `ProductDeletedDomainEvent`; `DELETE /api/products/{id}` goes through
-  [`DeleteProductCommandHandler`](../../src/CleanArchitecture.Application/Products/DeleteProduct/DeleteProductCommandHandler.cs).
-- [`AuditableEntitySaveChangesInterceptor`](../../src/CleanArchitecture.Infrastructure/Persistence/Interceptors/AuditableEntitySaveChangesInterceptor.cs)
-  stamps `DeletedOnUtc` / `DeletedBy` once, when the flag first flips.
-- [`ApplicationDbContext`](../../src/CleanArchitecture.Infrastructure/Persistence/ApplicationDbContext.cs) adds the
-  filter `!IsDeleted` to every root `ISoftDeletable` entity under the name `SoftDeleteFilter`, so a single query can
-  bypass just that filter with `IgnoreQueryFilters([ApplicationDbContext.SoftDeleteFilter])`.
-- [`ProductConfiguration`](../../src/CleanArchitecture.Infrastructure/Persistence/Configurations/ProductConfiguration.cs)
-  makes the SKU index unique with the filter `is_deleted = FALSE`, so a deleted product's SKU can be reused.
-- Migration [`SoftDeleteProducts`](../../src/CleanArchitecture.Infrastructure/Persistence/Migrations/20260924154223_SoftDeleteProducts.cs)
-  is hand-edited: it adds `is_deleted`, back-fills it as `NOT is_active`, then drops `is_active`, instead of the
-  scaffolded rename that would have inverted every row.
+## Outcome
+
+Deleted products return 404 and their SKUs become reusable. A query can bypass `ApplicationDbContext.SoftDeleteFilter` independently of future filters.
 
 ## Consequences
 
-**Positive**
+### Benefits
 
-- History and references are preserved; reads, updates and deletes of a deleted product return 404 with no extra
-  code in handlers or repositories.
-- New soft-deletable entities are filtered automatically by implementing the interface.
-- Naming the filter lets other filters (e.g. multi-tenancy) be added and bypassed independently.
+- History remains available without per-query exclusion logic.
+- New soft-deletable roots inherit filtering automatically.
 
-**Negative**
+### Trade-offs
 
-- Deleted rows stay in the table; data grows and eventually needs a retention policy.
-- Every query pays the filter; forgetting that it exists can surprise someone writing reporting queries.
-- The migration's `Down` fails if a deleted product's SKU was reused, because the unfiltered index cannot hold both.
-- There is no restore endpoint yet.
+- Rows accumulate and need a retention policy; reporting must account for hidden records.
+- No restore endpoint exists.
+- Migration rollback can fail after a deleted SKU is reused, because the old unfiltered index cannot accept duplicates.
 
-## Alternatives considered
+## Alternatives
 
-- **Hard delete.** Simplest and keeps tables small; loses history and breaks references.
-- **Keep the `is_active` flag checked by hand.** Every query must remember it; easy to leak inactive products.
-- **Archive table.** Moves deleted rows elsewhere; more migrations and copy logic for little gain here.
+- **Hard delete:** smaller tables, but loses history/reference continuity.
+- **Manual active-flag checks:** easy to omit and leak hidden rows.
+- **Archive table:** separates retained data, but adds copy/migration complexity.
+
+## References
+
+- [Soft-delete contract](../../src/CleanArchitecture.SharedKernel/Entities/ISoftDeletable.cs)
+- [Query filter](../../src/CleanArchitecture.Infrastructure/Persistence/ApplicationDbContext.cs)
+- [SKU index](../../src/CleanArchitecture.Infrastructure/Persistence/Configurations/ProductConfiguration.cs)
+- [Migration](../../src/CleanArchitecture.Infrastructure/Persistence/Migrations/20260924154223_SoftDeleteProducts.cs)
+- [Deletion auditing](../../src/CleanArchitecture.Infrastructure/Persistence/Interceptors/AuditableEntitySaveChangesInterceptor.cs)

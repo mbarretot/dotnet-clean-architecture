@@ -5,42 +5,39 @@
 
 ## Context
 
-Every way of running the API (Aspire, Docker Compose, Azure Container Apps, `dotnet run`) starts against a database
-that may be empty or behind the current model. Requiring a separate `dotnet ef database update` step before each
-run is easy to forget and needs the EF tools wherever the API runs.
+An empty or outdated database makes local/deployed startup fail without a separate schema step. Requiring EF tooling everywhere adds setup work.
 
 ## Decision
 
-The API applies pending migrations itself when it starts, before serving requests.
+Apply pending migrations before serving requests when Presentation is the entry assembly. Skip implicit migration under WebApplicationFactory; integration tests migrate explicitly, and manual EF updates remain supported.
 
-- [`Program.cs`](../../src/CleanArchitecture.Presentation/Program.cs) calls `ApplyPendingMigrationsAsync()` only when
-  the Presentation assembly is the entry assembly, so `WebApplicationFactory` hosts in tests do not migrate
-  implicitly ([`ApiFactory`](../../tests/CleanArchitecture.IntegrationTests/Infrastructure/ApiFactory.cs) migrates
-  explicitly instead).
-- [`MigrationExtensions`](../../src/CleanArchitecture.Infrastructure/Persistence/MigrationExtensions.cs) lists pending
-  migrations, logs them, and calls `MigrateAsync`; with nothing pending it only logs. It works through
-  [`IMigrationRunner`](../../src/CleanArchitecture.Infrastructure/Persistence/IMigrationRunner.cs) so the logic is
-  unit-tested ([`MigrationExtensionsTests`](../../tests/CleanArchitecture.Infrastructure.UnitTests/Persistence/MigrationExtensionsTests.cs)).
-- Applying migrations explicitly with `dotnet ef database update` remains possible, for example from CI.
+## Outcome
+
+MigrationExtensions logs pending migrations and invokes MigrateAsync; no pending work means logging only. IMigrationRunner makes this orchestration unit-testable.
 
 ## Consequences
 
-**Positive**
+### Benefits
 
-- A fresh database is usable as soon as the API is reachable, in every environment, with no manual step.
-- Schema and code are deployed together by the same image.
+- Fresh databases become usable with API startup.
+- The deployed image carries both code and schema migrations.
 
-**Negative**
+### Trade-offs
 
-- The application's database login needs DDL permissions in every environment, including production.
-- A failing migration stops the API from starting; startup time grows with migration work.
-- With several replicas, each instance attempts to migrate on start; the design relies on EF Core's own handling
-  of concurrent `Migrate` calls rather than a dedicated migration job.
-- Destructive or long-running migrations run implicitly on deploy, without a separate approval step.
+- The API database login needs DDL privileges, including in production.
+- Failed/long migrations stop or delay startup; destructive changes have no separate approval gate.
+- Each replica attempts migration, relying on EF’s concurrency handling rather than a dedicated migration job.
 
-## Alternatives considered
+## Alternatives
 
-- **Manual `dotnet ef database update`.** Explicit control; an extra step for every developer and deployment.
-- **A dedicated migration job or init container** (or an EF migration bundle). Separates privileges and runs once
-  per deployment; more deployment plumbing than this reference currently has.
-- **Idempotent SQL scripts applied by the pipeline.** Reviewable SQL; needs a database-capable pipeline stage.
+- **Manual EF update:** explicit, but an extra developer/deployment step.
+- **Dedicated job/init container/bundle:** separates privileges and execution, but needs deployment plumbing.
+- **Pipeline SQL:** reviewable, but requires database connectivity and another stage.
+
+## References
+
+- [Startup guard](../../src/CleanArchitecture.Presentation/Program.cs)
+- [Migration runner](../../src/CleanArchitecture.Infrastructure/Persistence/MigrationExtensions.cs)
+- [Runner contract](../../src/CleanArchitecture.Infrastructure/Persistence/IMigrationRunner.cs)
+- [Migration tests](../../tests/CleanArchitecture.Infrastructure.UnitTests/Persistence/MigrationExtensionsTests.cs)
+- [ADR-0011](0011-integration-tests-testcontainers.md)

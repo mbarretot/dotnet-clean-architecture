@@ -5,50 +5,40 @@
 
 ## Context
 
-Unit tests cover each layer, but several behaviours only exist when everything runs together: routing,
-authentication and the fallback policy, ProblemDetails mapping, EF Core migrations, the `xmin` token, the filtered
-SKU index, and the interceptors. SQLite or in-memory providers cannot reproduce PostgreSQL-specific behaviour, and
-an external identity provider would make tests slow and flaky.
+HTTP middleware, migrations, indexes and interceptors need end-to-end checks. SQLite/in-memory providers miss PostgreSQL behavior; an external issuer introduces an unrelated dependency.
 
 ## Decision
 
-Test the real API over HTTP, in memory, against a throwaway PostgreSQL container, authenticating with JWTs the
-tests sign themselves.
+Use WebApplicationFactory with disposable PostgreSQL 17, Testcontainers and self-signed test JWTs. Share one sequential factory, apply migrations explicitly and reset rows with Respawn before each test.
 
-- [`ApiFactory`](../../tests/CleanArchitecture.IntegrationTests/Infrastructure/ApiFactory.cs) extends
-  `WebApplicationFactory<Program>`, starts `postgres:17-alpine` via Testcontainers, applies migrations once, and
-  runs under a dedicated `IntegrationTests` environment so developer user-secrets are not loaded.
-- [`IntegrationTestCollection`](../../tests/CleanArchitecture.IntegrationTests/Infrastructure/IntegrationTestCollection.cs)
-  shares one factory across all tests and runs them sequentially;
-  [`IntegrationTest`](../../tests/CleanArchitecture.IntegrationTests/Infrastructure/IntegrationTest.cs) resets data
-  with Respawn before each test, keeping the schema and `__EFMigrationsHistory`.
-- [`TestJwtTokens`](../../tests/CleanArchitecture.IntegrationTests/Infrastructure/TestJwtTokens.cs) mints HS256
-  tokens with a test-only key; the factory configures the matching issuer, audience and signing key in the
-  `Authentication:Schemes:Bearer` shape. The API's JwtBearer pipeline and scope policy run unmodified; no test
-  authentication handler replaces them.
-- Tests are grouped by concern under
-  [`tests/CleanArchitecture.IntegrationTests`](../../tests/CleanArchitecture.IntegrationTests): products lifecycle,
-  errors, auditing, authorization, health, and OpenAPI.
+## Outcome
+
+Actual routing, JwtBearer validation, policies and SQL run together. The IntegrationTests environment excludes development secrets; resets retain schema/migration history and clear HybridCache.
 
 ## Consequences
 
-**Positive**
+### Benefits
 
-- High confidence: the same middleware, policies, SQL, and migrations as production are exercised.
-- Tests are hermetic: no shared database, no identity provider, no network beyond Docker.
-- One container per run plus Respawn keeps the suite reasonably fast.
+- No shared database or identity-provider state leaks between runs.
+- One container plus row resets avoids creating a database for every test.
 
-**Negative**
+### Trade-offs
 
-- Docker must be running for `dotnet test`, locally and in CI.
-- Sequential execution inside the collection limits parallelism as the suite grows.
-- Symmetric test signing differs from the asymmetric keys (JWKS discovery) real issuers use, so key discovery is not
-  covered here.
+- Docker must be available locally and in CI.
+- Sequential collection execution limits parallelism.
+- HS256 test tokens exercise validation, not real issuers’ asymmetric JWKS discovery.
 
-## Alternatives considered
+## Alternatives
 
-- **EF Core in-memory or SQLite.** Fast, no Docker; misses PostgreSQL behaviour (`xmin`, filtered indexes, types).
-  SQLite is still used for interceptor unit tests.
-- **A fake authentication handler.** Simpler tokens; bypasses the real JwtBearer validation being tested.
-- **A new database per test.** Maximum isolation; much slower than resetting rows with Respawn.
-- **A shared long-lived test database.** No container start-up; state leaks between runs and developers.
+- **SQLite/in-memory:** quicker, but omits PostgreSQL-specific behavior; SQLite remains useful for unit fixtures.
+- **Fake authentication:** bypasses the validator under test.
+- **Database per test:** stronger isolation, but slower setup.
+- **Long-lived shared database:** no startup cost, but leaked state between developers/runs.
+
+## References
+
+- [API factory](../../tests/CleanArchitecture.IntegrationTests/Infrastructure/ApiFactory.cs)
+- [Sequential collection](../../tests/CleanArchitecture.IntegrationTests/Infrastructure/IntegrationTestCollection.cs)
+- [Database-reset base](../../tests/CleanArchitecture.IntegrationTests/Infrastructure/IntegrationTest.cs)
+- [Test tokens](../../tests/CleanArchitecture.IntegrationTests/Infrastructure/TestJwtTokens.cs)
+- [ADR-0007](0007-optimistic-concurrency-xmin.md)

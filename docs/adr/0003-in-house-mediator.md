@@ -5,54 +5,39 @@
 
 ## Context
 
-Endpoints dispatch commands and queries to handlers, cross-cutting concerns (logging, validation) wrap every
-request as pipeline behaviors, and domain events fan out to notification handlers. MediatR is the usual library for
-this in .NET. Neither the code nor its history records *why* it was not used, so this ADR states the trade-offs
-neutrally.
+Commands, queries and notifications need dispatch plus logging/validation behaviors. History does not establish why MediatR was omitted; this record states observable trade-offs, not an invented motivation.
 
 ## Decision
 
-Ship a small mediator in [`SharedKernel/Messaging`](../../src/CleanArchitecture.SharedKernel/Messaging) and forbid
-MediatR.
+Keep the small in-house mediator and forbid MediatR references. Commands/queries return `Result` types; scoped handlers are assembly-discovered, and cached wrappers build the logging/validation pipeline.
 
-- `ISender` / [`Sender`](../../src/CleanArchitecture.SharedKernel/Messaging/Sender.cs) resolves the handler, builds
-  the `IPipelineBehavior<,>` chain, and caches one closed
-  [`RequestHandlerWrapper`](../../src/CleanArchitecture.SharedKernel/Messaging/RequestHandlerWrapper.cs) per request
-  type, so only the first dispatch pays for reflection.
-- `IPublisher` / [`Publisher`](../../src/CleanArchitecture.SharedKernel/Messaging/Publisher.cs) runs every
-  notification handler sequentially, keeps going if one throws, then throws an `AggregateException`.
-- [`ICommand`](../../src/CleanArchitecture.SharedKernel/Messaging/ICommand.cs) and
-  [`IQuery<T>`](../../src/CleanArchitecture.SharedKernel/Messaging/IQuery.cs) fix the response type to `Result` /
-  `Result<T>` (see [ADR-0004](0004-result-pattern.md)).
-- [`AddMediator`](../../src/CleanArchitecture.SharedKernel/Messaging/MediatorServiceCollectionExtensions.cs) scans
-  assemblies and registers request and notification handlers as scoped;
-  [`Application/DependencyInjection.cs`](../../src/CleanArchitecture.Application/DependencyInjection.cs) adds the
-  logging and validation behaviors.
-- [`MediatRTests.cs`](../../tests/CleanArchitecture.ArchitectureTests/MediatRTests.cs) fails if any layer references
-  MediatR.
+## Outcome
+
+Endpoints dispatch through `ISender`; `IPublisher` invokes notifications sequentially, continues after handler failures, then throws an `AggregateException`.
 
 ## Consequences
 
-**Positive**
+### Benefits
 
-- No third-party dependency, licence, or major-version upgrade to track for a core abstraction.
-- About a dozen small files a reader can study end to end; nothing is hidden behind a package.
-- Contracts are tailored: commands and queries are typed to `Result`, which a general-purpose library does not
-  impose.
+- Contracts are tailored to the result-based application.
+- Dispatch behavior is readable locally, without an external core dependency or its license/major-version upgrade lifecycle.
 
-**Negative**
+### Trade-offs
 
-- The repository owns this code, its tests
-  ([`SharedKernel.UnitTests/Messaging`](../../tests/CleanArchitecture.SharedKernel.UnitTests/Messaging)), and its
-  bugs.
-- Fewer features than MediatR: no streaming requests, no pre/post processors, and notifications are always
-  published sequentially.
-- Developers who know MediatR must learn slightly different registration and types.
+- The repository owns implementation bugs and tests.
+- No streaming, pre/post processors or parallel notification publishing.
+- Developers must learn registration and contracts different from MediatR.
 
-## Alternatives considered
+## Alternatives
 
-- **MediatR.** Mature and widely known; adds an external dependency and more surface than this project uses.
-- **Inject handlers directly into endpoints.** No mediator at all; cross-cutting behaviors would then need
-  per-handler decorators.
-- **A source-generated mediator.** Avoids runtime reflection; adds a build-time dependency and generated code that
-  is harder to read in a reference project.
+- **MediatR:** mature, but adds a dependency and unused surface.
+- **Direct handler injection:** removes dispatch, but repeats cross-cutting decorators.
+- **Generated mediator:** avoids reflection, but adds build tooling and generated code.
+
+## References
+
+- [Messaging implementation](../../src/CleanArchitecture.SharedKernel/Messaging)
+- [Pipeline registration](../../src/CleanArchitecture.Application/DependencyInjection.cs)
+- [Mediator tests](../../tests/CleanArchitecture.SharedKernel.UnitTests/Messaging)
+- [MediatR prohibition](../../tests/CleanArchitecture.ArchitectureTests/MediatRTests.cs)
+- [ADR-0004](0004-result-pattern.md)

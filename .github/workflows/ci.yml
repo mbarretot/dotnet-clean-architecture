@@ -106,39 +106,6 @@ jobs:
                   failed = True
           sys.exit(1 if failed else 0)
 
-      - name: Write badge data
-        if: ${{ !cancelled() && hashFiles('TestResults/coverage-report/Cobertura.xml') != '' }}
-        shell: python
-        run: |
-          import json, os, re, xml.etree.ElementTree as ET
-          # The runner's dotnet test output carries ANSI colour codes at line starts; strip them first.
-          log = re.sub(r"\x1b\[[0-9;]*m", "", open("test-output.log", encoding="utf-8").read())
-          total = int(re.findall(r"^\s*total:\s*(\d+)", log, re.M)[-1])
-          failed = int(re.findall(r"^\s*failed:\s*(\d+)", log, re.M)[-1])
-          line = float(ET.parse("TestResults/coverage-report/Cobertura.xml").getroot().get("line-rate")) * 100
-          os.makedirs("badges", exist_ok=True)
-          badges = {
-              "tests": {
-                  "message": f"{total - failed} passing" + (f", {failed} failing" if failed else ""),
-                  "color": "red" if failed else "2EA44F",
-              },
-              "coverage": {
-                  "message": f"{line:.1f}%",
-                  "color": "2EA44F" if line >= 90 else "yellow" if line >= 75 else "red",
-              },
-          }
-          for name, badge in badges.items():
-              with open(f"badges/{name}.json", "w", encoding="utf-8") as file:
-                  json.dump({"schemaVersion": 1, "label": name, **badge}, file)
-
-      - name: Upload badge data
-        if: ${{ !cancelled() && hashFiles('badges/*.json') != '' }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: badges
-          path: badges
-          retention-days: 7
-
       - name: Publish coverage summary
         if: ${{ !cancelled() && hashFiles('TestResults/coverage-report/SummaryGithub.md') != '' }}
         run: cat TestResults/coverage-report/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY"
