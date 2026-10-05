@@ -15,10 +15,13 @@ public sealed class ProductAuthorizationTests(ApiFactory factory) : IntegrationT
         new() { Name = "Keyboard", Description = "", Price = 1m, Currency = "USD" };
 
     public static TheoryData<string> AllProductEndpoints =>
-        ["GET /api/products", "GET /api/products/{id}", "POST /api/products", "PUT /api/products/{id}", "DELETE /api/products/{id}"];
+        [
+            "GET /api/products", "GET /api/products/{id}", "POST /api/products", "PUT /api/products/{id}",
+            "DELETE /api/products/{id}", "PUT /api/products/{id}/stock",
+        ];
 
     public static TheoryData<string> WriteProductEndpoints =>
-        ["POST /api/products", "PUT /api/products/{id}", "DELETE /api/products/{id}"];
+        ["POST /api/products", "PUT /api/products/{id}", "DELETE /api/products/{id}", "PUT /api/products/{id}/stock"];
 
     [Theory]
     [MemberData(nameof(AllProductEndpoints))]
@@ -78,6 +81,8 @@ public sealed class ProductAuthorizationTests(ApiFactory factory) : IntegrationT
         {
             "GET" => client.GetAsync(uri, CancellationToken),
             "POST" => client.PostAsJsonAsync(uri, NewProduct("Other", "SKU-OTHER"), CancellationToken),
+            "PUT" when template.EndsWith("/stock", StringComparison.Ordinal) =>
+                client.PutAsJsonAsync(uri, new SetProductStockRequest { StockQuantity = 1 }, CancellationToken),
             "PUT" => client.PutAsJsonAsync(uri, Update, CancellationToken),
             "DELETE" => client.DeleteAsync(uri, CancellationToken),
             _ => throw new ArgumentOutOfRangeException(nameof(endpoint), endpoint, "Unsupported HTTP method."),

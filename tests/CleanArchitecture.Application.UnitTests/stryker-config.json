@@ -1,0 +1,31 @@
+{
+  "stryker-config": {
+    "test-runner": "mtp",
+    "test-projects": [
+      "CleanArchitecture.Application.UnitTests.csproj"
+    ],
+    "mutation-level": "Standard",
+    "coverage-analysis": "perTest",
+    "reporters": [
+      "html",
+      "json",
+      "markdown",
+      "progress"
+    ],
+    "ignore-methods": [
+      "*Log*",
+      "ConfigureAwait",
+      "ToString"
+    ],
+    "thresholds": {
+      "high": 80,
+      "low": 65,
+      "break": 60
+    },
+    "mutate": [
+      "**/*.cs",
+      "!**/*Errors.cs",
+      "!**/Migrations/**/*.cs"
+    ]
+  }
+}

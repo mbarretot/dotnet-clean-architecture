@@ -74,6 +74,13 @@ variable "postgres_database_name" {
   default     = "cleanarchitecture"
 }
 
+variable "cache_connection_string" {
+  description = "Optional StackExchange.Redis connection string (e.g. an Azure Managed Redis instance). When null the API caches in process only."
+  type        = string
+  default     = null
+  sensitive   = true
+}
+
 variable "tags" {
   description = "Common tags applied to every resource."
   type        = map(string)

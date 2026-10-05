@@ -23,9 +23,10 @@ public class PlaceOrderCommandHandlerTests
     private PlaceOrderCommandHandler CreateSut() =>
         new(_orderRepository, _productRepository, _currentUser, _unitOfWork, _dateTimeProvider);
 
-    private Product GivenProduct(string name, decimal price, string currency = "USD")
+    private Product GivenProduct(string name, decimal price, string currency = "USD", int stock = 100)
     {
-        var product = Product.Create(name, "Description", Money.Create(price, currency).Value, Sku.Create($"SKU-{name}").Value).Value;
+        var product = Product.Create(
+            name, "Description", Money.Create(price, currency).Value, Sku.Create($"SKU-{name}").Value, stock).Value;
         _productRepository.GetByIdAsync(product.Id, Arg.Any<CancellationToken>()).Returns(product);
 
         return product;
@@ -50,6 +51,34 @@ public class PlaceOrderCommandHandlerTests
             && order.Total == Money.Create(120m, "USD").Value
             && order.Lines.Any(line => line.ProductId == keyboard.Id && line.ProductName == "Keyboard" && line.Quantity == 2)));
         await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ReservesStockForEachMergedLine()
+    {
+        var keyboard = GivenProduct("Keyboard", 50m, stock: 5);
+        var mouse = GivenProduct("Mouse", 20m, stock: 1);
+        var command = new PlaceOrderCommand(
+            [new PlaceOrderLine(keyboard.Id, 1), new PlaceOrderLine(mouse.Id, 1), new PlaceOrderLine(keyboard.Id, 2)]);
+
+        var result = await CreateSut().Handle(command, TestContext.Current.CancellationToken);
+
+        result.IsSuccess.ShouldBeTrue();
+        keyboard.StockQuantity.ShouldBe(2);
+        mouse.StockQuantity.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task Handle_WithInsufficientStock_ReturnsConflictWithoutSaving()
+    {
+        var keyboard = GivenProduct("Keyboard", 50m, stock: 2);
+        var command = new PlaceOrderCommand([new PlaceOrderLine(keyboard.Id, 2), new PlaceOrderLine(keyboard.Id, 1)]);
+
+        var result = await CreateSut().Handle(command, TestContext.Current.CancellationToken);
+
+        result.Error.ShouldBe(ProductErrors.InsufficientStock(keyboard.Id, 3, 2));
+        _orderRepository.DidNotReceive().Add(Arg.Any<Order>());
+        await _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]

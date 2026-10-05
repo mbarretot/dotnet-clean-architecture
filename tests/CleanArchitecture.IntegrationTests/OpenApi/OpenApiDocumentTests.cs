@@ -25,6 +25,10 @@ public sealed class OpenApiDocumentTests(ApiFactory factory) : IntegrationTest(f
         { "/api/products/{id}", "delete" },
         { "/api/orders", "post" },
         { "/api/orders/{id}/cancel", "post" },
+        { "/api/orders/{id}/pay", "post" },
+        { "/api/orders/{id}/ship", "post" },
+        { "/api/orders/{id}/complete", "post" },
+        { "/api/products/{id}/stock", "put" },
     };
 
     [Fact]
@@ -99,6 +103,7 @@ public sealed class OpenApiDocumentTests(ApiFactory factory) : IntegrationTest(f
         flow.GetProperty("tokenUrl").GetString().ShouldBe(TokenUrl);
         flow.GetProperty("scopes").TryGetProperty("products:write", out _).ShouldBeTrue();
         flow.GetProperty("scopes").TryGetProperty("orders:write", out _).ShouldBeTrue();
+        flow.GetProperty("scopes").TryGetProperty("orders:fulfill", out _).ShouldBeTrue();
     }
 
     [Fact]

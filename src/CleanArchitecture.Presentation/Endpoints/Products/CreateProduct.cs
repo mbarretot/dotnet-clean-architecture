@@ -17,6 +17,9 @@ public sealed record CreateProductRequest
     public required string Currency { get; init; }
 
     public required string Sku { get; init; }
+
+    /// <summary>Units on hand; defaults to zero.</summary>
+    public int StockQuantity { get; init; }
 }
 
 public sealed class CreateProduct : IEndpoint
@@ -37,7 +40,8 @@ public sealed class CreateProduct : IEndpoint
     private static async Task<IResult> HandleAsync(
         CreateProductRequest request, ISender sender, CancellationToken cancellationToken)
     {
-        var command = new CreateProductCommand(request.Name, request.Description, request.Price, request.Currency, request.Sku);
+        var command = new CreateProductCommand(
+            request.Name, request.Description, request.Price, request.Currency, request.Sku, request.StockQuantity);
 
         var result = await sender.Send(command, cancellationToken).ConfigureAwait(false);
 

@@ -20,6 +20,11 @@ negative consequences, and the alternatives considered, with links to the code t
 | [0012](0012-aspire-compose-and-azure-container-apps.md) | Local orchestration with .NET Aspire and Docker Compose; deploy to Azure Container Apps with Terraform | Accepted | 2026-09-21 |
 | [0013](0013-apply-migrations-at-startup.md) | Apply pending EF Core migrations at API startup | Accepted | 2026-09-24 |
 | [0014](0014-order-aggregate-references-products-by-id.md) | Order aggregate references products by id and snapshots name and price | Accepted | 2026-09-24 |
+| [0015](0015-product-stock-reserved-with-the-order.md) | Product stock is reserved in the same transaction as the order | Accepted | 2026-10-04 |
+| [0016](0016-order-lifecycle-state-machine.md) | Order lifecycle as an explicit state machine | Accepted | 2026-10-04 |
+| [0017](0017-hybridcache-for-product-reads.md) | HybridCache for product reads, invalidated by domain events | Accepted | 2026-10-04 |
+| [0018](0018-api-versioning.md) | API versioning with a default version | Accepted | 2026-10-04 |
+| [0019](0019-quality-gates-in-ci.md) | Quality and supply-chain gates in CI/CD | Accepted | 2026-10-04 |
 
 ## Adding a decision
 

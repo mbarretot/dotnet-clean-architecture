@@ -169,3 +169,7 @@ dotnet_diagnostic.CA1711.severity = none
 dotnet_diagnostic.CA1707.severity = none
 dotnet_diagnostic.CS1591.severity = none
 dotnet_diagnostic.CA1051.severity = none
+
+# Approved snapshots are written by tests; compare them byte-for-byte.
+[*.{approved,received}.json]
+insert_final_newline = false

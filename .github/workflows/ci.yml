@@ -11,6 +11,9 @@ permissions:
   contents: read
 
 env:
+  # Minimum merged coverage, in percent; the build fails below either.
+  COVERAGE_LINE_THRESHOLD: 85
+  COVERAGE_BRANCH_THRESHOLD: 80
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
@@ -85,6 +88,57 @@ jobs:
           "-targetdir:TestResults/coverage-report"
           "-reporttypes:HtmlInline;Cobertura;MarkdownSummaryGithub"
 
+      - name: Enforce coverage thresholds
+        if: ${{ !cancelled() && hashFiles('TestResults/coverage-report/Cobertura.xml') != '' }}
+        shell: python
+        run: |
+          import os, sys, xml.etree.ElementTree as ET
+          root = ET.parse("TestResults/coverage-report/Cobertura.xml").getroot()
+          checks = {
+              "line": (float(root.get("line-rate")) * 100, float(os.environ["COVERAGE_LINE_THRESHOLD"])),
+              "branch": (float(root.get("branch-rate")) * 100, float(os.environ["COVERAGE_BRANCH_THRESHOLD"])),
+          }
+          failed = False
+          for kind, (actual, minimum) in checks.items():
+              print(f"{kind} coverage {actual:.1f}% (minimum {minimum:.0f}%)")
+              if actual < minimum:
+                  print(f"::error::{kind.capitalize()} coverage {actual:.1f}% is below the {minimum:.0f}% threshold.")
+                  failed = True
+          sys.exit(1 if failed else 0)
+
+      - name: Write badge data
+        if: ${{ !cancelled() && hashFiles('TestResults/coverage-report/Cobertura.xml') != '' }}
+        shell: python
+        run: |
+          import json, os, re, xml.etree.ElementTree as ET
+          # The runner's dotnet test output carries ANSI colour codes at line starts; strip them first.
+          log = re.sub(r"\x1b\[[0-9;]*m", "", open("test-output.log", encoding="utf-8").read())
+          total = int(re.findall(r"^\s*total:\s*(\d+)", log, re.M)[-1])
+          failed = int(re.findall(r"^\s*failed:\s*(\d+)", log, re.M)[-1])
+          line = float(ET.parse("TestResults/coverage-report/Cobertura.xml").getroot().get("line-rate")) * 100
+          os.makedirs("badges", exist_ok=True)
+          badges = {
+              "tests": {
+                  "message": f"{total - failed} passing" + (f", {failed} failing" if failed else ""),
+                  "color": "red" if failed else "2EA44F",
+              },
+              "coverage": {
+                  "message": f"{line:.1f}%",
+                  "color": "2EA44F" if line >= 90 else "yellow" if line >= 75 else "red",
+              },
+          }
+          for name, badge in badges.items():
+              with open(f"badges/{name}.json", "w", encoding="utf-8") as file:
+                  json.dump({"schemaVersion": 1, "label": name, **badge}, file)
+
+      - name: Upload badge data
+        if: ${{ !cancelled() && hashFiles('badges/*.json') != '' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: badges
+          path: badges
+          retention-days: 7
+
       - name: Publish coverage summary
         if: ${{ !cancelled() && hashFiles('TestResults/coverage-report/SummaryGithub.md') != '' }}
         run: cat TestResults/coverage-report/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY"
@@ -116,9 +170,20 @@ jobs:
           context: .
           file: src/CleanArchitecture.Presentation/Dockerfile
           push: false
+          load: true
           tags: cleanarchitecture-presentation:ci-check
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # Gate: fixable HIGH/CRITICAL vulnerabilities in the image (OS packages or NuGet) fail the build.
+      - name: Scan image for vulnerabilities (Trivy)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: cleanarchitecture-presentation:ci-check
+          format: table
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
 
   terraform-lint:
     name: Terraform Lint
@@ -143,6 +208,26 @@ jobs:
 
       - name: terraform validate
         run: terraform validate
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v6
+
+      - name: tflint
+        env:
+          # tflint --init downloads the azurerm ruleset from GitHub releases.
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          tflint --init
+          tflint --format compact
+
+      # Accepted findings are skipped inline with a reason (#checkov:skip=...); anything new fails the job.
+      - name: checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: terraform
+          framework: terraform
+          quiet: true
+          compact: true
 
   ci-status:
     name: CI

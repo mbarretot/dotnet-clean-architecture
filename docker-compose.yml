@@ -14,6 +14,15 @@ services:
       retries: 10
     restart: unless-stopped
 
+  redis:
+    image: redis:8-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
   keycloak:
     image: quay.io/keycloak/keycloak:26.7
     command: ["start-dev", "--import-realm"]
@@ -48,6 +57,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__Database: "Host=postgres;Port=5432;Database=cleanarchitecture;Username=postgres;Password=postgres"
+      ConnectionStrings__Cache: "redis:6379"
       Authentication__Schemes__Bearer__Authority: http://keycloak:8080/realms/clean-architecture
       Authentication__Schemes__Bearer__ValidIssuers__0: http://localhost:8180/realms/clean-architecture
       Authentication__Schemes__Bearer__ValidAudiences__0: clean-architecture-api
@@ -57,8 +67,25 @@ services:
       OpenApi__OAuth2__ClientId: scalar
     ports:
       - "8080:8080"
+    healthcheck:
+      # The runtime image has no curl/wget, and its /bin/sh (dash) lacks /dev/tcp, so bash runs the probe.
+      # /health includes the database readiness check.
+      test:
+        - CMD
+        - bash
+        - -c
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/8080 &&
+          printf 'GET /health HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 &&
+          grep -q 'Healthy' <&3
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       keycloak:
         condition: service_healthy

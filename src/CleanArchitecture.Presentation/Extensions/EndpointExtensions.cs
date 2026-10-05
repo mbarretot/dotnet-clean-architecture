@@ -1,4 +1,5 @@
 using System.Reflection;
+using Asp.Versioning;
 using CleanArchitecture.Presentation.Authorization;
 using CleanArchitecture.Presentation.Endpoints;
 using CleanArchitecture.Presentation.OpenApi;
@@ -21,6 +22,17 @@ public static class EndpointExtensions
 
         services.TryAddEnumerable(descriptors);
 
+        services.AddApiVersioning(options =>
+            {
+                options.DefaultApiVersion = ApiVersions.V1;
+                options.AssumeDefaultVersionWhenUnspecified = true;
+                options.ReportApiVersions = true;
+                options.ApiVersionReader = ApiVersionReader.Combine(
+                    new QueryStringApiVersionReader(ApiVersions.QueryParameter),
+                    new HeaderApiVersionReader(ApiVersions.HeaderName));
+            })
+            .AddApiExplorer(options => options.GroupNameFormat = ApiVersions.GroupNameFormat);
+
         return services;
     }
 
@@ -28,9 +40,11 @@ public static class EndpointExtensions
     {
         ArgumentNullException.ThrowIfNull(app);
 
+        var v1 = app.NewVersionedApi().MapGroup(string.Empty).HasApiVersion(ApiVersions.V1);
+
         foreach (var endpoint in app.Services.GetServices<IEndpoint>())
         {
-            endpoint.MapEndpoint(app);
+            endpoint.MapEndpoint(v1);
         }
 
         return app;
@@ -45,6 +59,7 @@ public static class EndpointExtensions
         app.MapEndpoints();
 
         app.MapOpenApi()
+            .WithDocumentPerVersion()
             .AllowAnonymous();
 
         if (app.Environment.IsDevelopment())
@@ -70,6 +85,6 @@ public static class EndpointExtensions
             .AddAuthorizationCodeFlow(OAuth2SecuritySchemeTransformer.SchemeId, flow => flow
                 .WithClientId(oauth2.ClientId!)
                 .WithPkce(Pkce.Sha256)
-                .WithSelectedScopes([Scopes.ProductsWrite, Scopes.OrdersWrite]));
+                .WithSelectedScopes([Scopes.ProductsWrite, Scopes.OrdersWrite, Scopes.OrdersFulfill]));
     }
 }

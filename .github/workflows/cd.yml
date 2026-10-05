@@ -19,6 +19,10 @@ jobs:
     permissions:
       contents: read
       packages: write
+      # Keyless cosign signing exchanges the workflow's OIDC token for a Sigstore certificate.
+      id-token: write
+      # Uploads Trivy's SARIF report to code scanning.
+      security-events: write
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -43,6 +47,7 @@ jobs:
             type=raw,value=latest
 
       - name: Build and push Presentation image
+        id: build
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -52,3 +57,46 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          # Attach an SPDX SBOM and SLSA provenance to the image as registry attestations.
+          sbom: true
+          provenance: mode=max
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v4.1.2
+
+      # Signs the digest (not a tag) so the signature covers exactly the bytes that were pushed.
+      - name: Sign image (keyless)
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}@${{ steps.build.outputs.digest }}
+        run: cosign sign --yes "$IMAGE"
+
+      - name: Generate CycloneDX SBOM
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ghcr.io/${{ github.repository }}@${{ steps.build.outputs.digest }}
+          format: cyclonedx
+          output: sbom.cdx.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v7
+        with:
+          name: sbom
+          path: sbom.cdx.json
+          retention-days: 90
+
+      - name: Scan published image (Trivy)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ghcr.io/${{ github.repository }}@${{ steps.build.outputs.digest }}
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH,MEDIUM
+          # The CI gate already blocks fixable HIGH/CRITICAL; this run only reports to code scanning.
+          exit-code: "0"
+
+      - name: Upload Trivy results to code scanning
+        if: ${{ !cancelled() && hashFiles('trivy-results.sarif') != '' }}
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy-image

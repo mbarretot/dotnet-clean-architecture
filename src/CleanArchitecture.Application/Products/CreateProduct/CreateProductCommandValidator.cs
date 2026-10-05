@@ -11,5 +11,6 @@ public sealed class CreateProductCommandValidator : AbstractValidator<CreateProd
         RuleFor(command => command.Price).GreaterThanOrEqualTo(0);
         RuleFor(command => command.Currency).NotEmpty().Length(3);
         RuleFor(command => command.Sku).NotEmpty().MaximumLength(64);
+        RuleFor(command => command.StockQuantity).GreaterThanOrEqualTo(0);
     }
 }

@@ -28,6 +28,9 @@ public abstract class IntegrationTest(ApiFactory factory) : IAsyncLifetime
     protected HttpClient CreateCustomerClient(string subject = CustomerSubject) =>
         Factory.CreateClient(TestJwtTokens.Create(subject, Scopes.OrdersWrite));
 
+    protected HttpClient CreateFulfillmentClient() =>
+        Factory.CreateClient(TestJwtTokens.Create("fulfillment-user", Scopes.OrdersFulfill));
+
     protected HttpClient CreateAnonymousClient() => Factory.CreateClient(accessToken: null);
 
     protected static CreateProductRequest NewProduct(string name = "Mechanical Keyboard", string sku = "KB-001") => new()
@@ -37,6 +40,7 @@ public abstract class IntegrationTest(ApiFactory factory) : IAsyncLifetime
         Price = 129.99m,
         Currency = "USD",
         Sku = sku,
+        StockQuantity = 100,
     };
 
     protected static async Task<Guid> CreateProductAsync(HttpClient client, CreateProductRequest request)

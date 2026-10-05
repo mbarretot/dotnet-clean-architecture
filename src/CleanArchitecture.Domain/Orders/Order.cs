@@ -1,6 +1,7 @@
 using CleanArchitecture.Domain.Orders.Events;
 using CleanArchitecture.Domain.Products;
 using CleanArchitecture.SharedKernel.Entities;
+using CleanArchitecture.SharedKernel.Messaging;
 using CleanArchitecture.SharedKernel.Results;
 
 namespace CleanArchitecture.Domain.Orders;
@@ -66,6 +67,13 @@ public sealed class Order : AggregateRoot
         return order;
     }
 
+    public Result Pay() => TransitionTo(OrderStatus.Paid, [OrderStatus.Placed], new OrderPaidDomainEvent(Id));
+
+    public Result Ship() => TransitionTo(OrderStatus.Shipped, [OrderStatus.Paid], new OrderShippedDomainEvent(Id));
+
+    public Result Complete() =>
+        TransitionTo(OrderStatus.Completed, [OrderStatus.Shipped], new OrderCompletedDomainEvent(Id));
+
     public Result Cancel()
     {
         if (Status == OrderStatus.Cancelled)
@@ -73,9 +81,20 @@ public sealed class Order : AggregateRoot
             return Result.Failure(OrderErrors.AlreadyCancelled);
         }
 
-        Status = OrderStatus.Cancelled;
+        return TransitionTo(
+            OrderStatus.Cancelled, [OrderStatus.Placed, OrderStatus.Paid], new OrderCancelledDomainEvent(Id));
+    }
 
-        Raise(new OrderCancelledDomainEvent(Id));
+    private Result TransitionTo(OrderStatus target, OrderStatus[] allowedFrom, IDomainEvent domainEvent)
+    {
+        if (!allowedFrom.Contains(Status))
+        {
+            return Result.Failure(OrderErrors.InvalidStatusTransition(Status, target));
+        }
+
+        Status = target;
+
+        Raise(domainEvent);
 
         return Result.Success();
     }

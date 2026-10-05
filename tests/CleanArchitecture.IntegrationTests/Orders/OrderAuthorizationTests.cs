@@ -9,9 +9,21 @@ namespace CleanArchitecture.IntegrationTests.Orders;
 public sealed class OrderAuthorizationTests(ApiFactory factory) : IntegrationTest(factory)
 {
     public static TheoryData<string> AllOrderEndpoints =>
-        ["GET /api/orders", "GET /api/orders/{id}", "POST /api/orders", "POST /api/orders/{id}/cancel"];
+        [
+            "GET /api/orders", "GET /api/orders/{id}", "POST /api/orders", "POST /api/orders/{id}/cancel",
+            "POST /api/orders/{id}/pay", "POST /api/orders/{id}/ship", "POST /api/orders/{id}/complete",
+        ];
 
-    public static TheoryData<string> WriteOrderEndpoints => ["POST /api/orders", "POST /api/orders/{id}/cancel"];
+    public static TheoryData<string> WriteOrderEndpoints =>
+        [
+            "POST /api/orders", "POST /api/orders/{id}/cancel", "POST /api/orders/{id}/pay",
+            "POST /api/orders/{id}/ship", "POST /api/orders/{id}/complete",
+        ];
+
+    public static TheoryData<string> FulfillmentEndpoints => ["POST /api/orders/{id}/ship", "POST /api/orders/{id}/complete"];
+
+    public static TheoryData<string> CustomerWriteEndpoints =>
+        ["POST /api/orders", "POST /api/orders/{id}/cancel", "POST /api/orders/{id}/pay"];
 
     [Theory]
     [MemberData(nameof(AllOrderEndpoints))]
@@ -44,6 +56,30 @@ public sealed class OrderAuthorizationTests(ApiFactory factory) : IntegrationTes
         using var productWriter = CreateWriterClient();
 
         var response = await SendAsync(productWriter, endpoint, orderId, productId);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+    }
+
+    [Theory]
+    [MemberData(nameof(FulfillmentEndpoints))]
+    public async Task Fulfillment_with_only_orders_write_scope_is_forbidden(string endpoint)
+    {
+        var (productId, orderId) = await GivenAnOrderAsync();
+        using var customer = CreateCustomerClient();
+
+        var response = await SendAsync(customer, endpoint, orderId, productId);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+    }
+
+    [Theory]
+    [MemberData(nameof(CustomerWriteEndpoints))]
+    public async Task Customer_write_with_only_orders_fulfill_scope_is_forbidden(string endpoint)
+    {
+        var (productId, orderId) = await GivenAnOrderAsync();
+        using var fulfillment = CreateFulfillmentClient();
+
+        var response = await SendAsync(fulfillment, endpoint, orderId, productId);
 
         response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
     }

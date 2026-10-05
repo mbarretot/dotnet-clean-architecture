@@ -5,4 +5,6 @@ public static class AuthorizationPolicies
     public const string ProductsWrite = "ProductsWrite";
 
     public const string OrdersWrite = "OrdersWrite";
+
+    public const string OrdersFulfill = "OrdersFulfill";
 }

@@ -6,6 +6,9 @@ var postgres = builder.AddPostgres("postgres")
 // Must stay "Database": Infrastructure reads ConnectionStrings:Database.
 var database = postgres.AddDatabase("Database");
 
+// Must stay "Cache": Infrastructure reads ConnectionStrings:Cache as HybridCache's distributed tier.
+var cache = builder.AddRedis("Cache");
+
 var keycloak = builder.AddKeycloak("keycloak", port: 8180)
     .WithRealmImport("../../deploy/keycloak");
 
@@ -14,6 +17,8 @@ var realm = ReferenceExpression.Create($"{keycloak.GetEndpoint("http")}/realms/c
 var api = builder.AddProject<Projects.CleanArchitecture_Presentation>("api")
     .WithReference(database)
     .WaitFor(database)
+    .WithReference(cache)
+    .WaitFor(cache)
     .WithReference(keycloak)
     .WaitFor(keycloak)
     .WithEnvironment("Authentication__Schemes__Bearer__Authority", realm)

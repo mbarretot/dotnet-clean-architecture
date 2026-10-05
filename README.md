@@ -11,7 +11,8 @@
 [![Aspire](https://img.shields.io/badge/.NET_Aspire-13.4-7B2CBF?style=flat-square&logo=dotnet&logoColor=white)](https://learn.microsoft.com/dotnet/aspire/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16%20%7C%2017-4169E1?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-enabled-F5A800?style=flat-square&logo=opentelemetry&logoColor=black)](https://opentelemetry.io/)
-[![Tests](https://img.shields.io/badge/tests-296_passing-2EA44F?style=flat-square)](#quality-gates)
+[![Tests](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fmbarretot%2Fdotnet-clean-architecture%2Fbadges%2Ftests.json&style=flat-square)](#quality-gates)
+[![Coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fmbarretot%2Fdotnet-clean-architecture%2Fbadges%2Fcoverage.json&style=flat-square)](#quality-gates)
 [![License: MIT](https://img.shields.io/badge/license-MIT-22C55E?style=flat-square)](LICENSE)
 
 [Architecture](#architecture) · [Request flow](#request-flow) · [Run](#run-it) · [Auth](#authentication) · [Project map](#project-map) · [Delivery](#delivery) · [Decisions](docs/adr/README.md)
@@ -26,8 +27,9 @@
 | Area | What is implemented |
 |---|---|
 | **Architecture** | Clean Architecture, CQRS-style commands/queries, inward-only dependencies |
-| **Domain** | Aggregates, value objects, domain events, `Result` / `Result<T>` |
-| **API** | ASP.NET Core Minimal APIs, endpoint discovery, RFC 7807, OpenAPI + Scalar |
+| **Domain** | Aggregates, value objects, domain events, `Result` / `Result<T>`, stock reservation, order state machine |
+| **API** | ASP.NET Core Minimal APIs, endpoint discovery, RFC 7807, OpenAPI + Scalar, API versioning, search and filters |
+| **Caching** | `HybridCache` (in-process + optional Redis) for product reads, invalidated by domain events |
 | **Data** | EF Core 10, PostgreSQL, migrations, auditing, soft delete via a named global query filter, optimistic concurrency |
 | **Platform** | .NET Aspire, OpenTelemetry, Docker, Azure Container Apps, Terraform |
 | **Quality** | xUnit v3, Shouldly, NSubstitute, NetArchTest, warnings as errors |
@@ -117,7 +119,7 @@ sequenceDiagram
 aspire run
 ```
 
-Starts the API, PostgreSQL, Keycloak, and the Aspire dashboard with logs, traces, and metrics.
+Starts the API, PostgreSQL, Redis, Keycloak, and the Aspire dashboard with logs, traces, and metrics.
 
 ### 🐳 Docker Compose
 
@@ -156,15 +158,21 @@ dotnet ef database update \
 
 | Method | Route | Purpose | Requires |
 |---|---|---|---|
-| `GET` | `/api/products` | List products with pagination | Authenticated user |
-| `GET` | `/api/products/{id}` | Get one product | Authenticated user |
-| `POST` | `/api/products` | Create a product | `products:write` scope |
+| `GET` | `/api/products` | List products: `search`, `minPrice`, `maxPrice`, `sort` (`name`, `-name`, `price`, `-price`), pagination | Authenticated user |
+| `GET` | `/api/products/{id}` | Get one product (cached) | Authenticated user |
+| `POST` | `/api/products` | Create a product, with optional initial `stockQuantity` | `products:write` scope |
 | `PUT` | `/api/products/{id}` | Update a product | `products:write` scope |
+| `PUT` | `/api/products/{id}/stock` | Set the units on hand | `products:write` scope |
 | `DELETE` | `/api/products/{id}` | Soft-delete a product (then reads as `404`) | `products:write` scope |
 | `GET` | `/api/orders` | List my orders with pagination, newest first | Authenticated user |
 | `GET` | `/api/orders/{id}` | Get one of my orders (someone else's reads as `404`) | Authenticated user |
-| `POST` | `/api/orders` | Place an order, snapshotting product names and prices | `orders:write` scope |
-| `POST` | `/api/orders/{id}/cancel` | Cancel one of my orders (again: `409`) | `orders:write` scope |
+| `POST` | `/api/orders` | Place an order, snapshotting names and prices and reserving stock (short: `409`) | `orders:write` scope |
+| `POST` | `/api/orders/{id}/pay` | Pay one of my placed orders | `orders:write` scope |
+| `POST` | `/api/orders/{id}/cancel` | Cancel one of my placed or paid orders and release its stock | `orders:write` scope |
+| `POST` | `/api/orders/{id}/ship` | Ship a paid order | `orders:fulfill` scope |
+| `POST` | `/api/orders/{id}/complete` | Complete a shipped order | `orders:fulfill` scope |
+
+Orders move `Placed → Paid → Shipped → Completed` and can be cancelled while placed or paid; any other transition is a `409`. Every route is version `1.0`: send `api-version` (query) or `X-Api-Version` (header), or nothing for the default. An unsupported version returns `400`.
 
 ## 🔐 Authentication
 
@@ -172,7 +180,7 @@ Provider-agnostic JWT bearer tokens (`Microsoft.AspNetCore.Authentication.JwtBea
 
 **Secure by default** — an authorization fallback policy requires an authenticated user on every endpoint that declares nothing, so a new endpoint is never accidentally public. Public routes are opt-in via `AllowAnonymous()`: the health probes (`/health`, `/alive`), the OpenAPI document, and Scalar (Development only). A convention test pins that allow-list, and the OpenAPI document declares `401` (plus `403` for scoped operations) on every protected operation.
 
-- Write endpoints require a `scope` claim containing `products:write` or `orders:write` (space-delimited or one claim per scope).
+- Write endpoints require a `scope` claim containing `products:write`, `orders:write` or `orders:fulfill` (space-delimited or one claim per scope).
 - Inbound claim mapping is disabled, so `sub` is the audited user id.
 - `401` and `403` are RFC 9457 `application/problem+json` responses like every other error; `401` keeps the `WWW-Authenticate` challenge.
 
@@ -190,9 +198,9 @@ Both setups start Keycloak on port `8180` and import the realm-as-code in [`depl
 
 | Client | Grant | Proves |
 |---|---|---|
-| `clean-architecture-service` / `dev-only-service-secret` | Client credentials, `products:write` + `orders:write` by default | Reads and writes succeed (`201`/`200`) |
+| `clean-architecture-service` / `dev-only-service-secret` | Client credentials, `products:write` + `orders:write` + `orders:fulfill` by default | Reads and writes succeed (`201`/`200`) |
 | `clean-architecture-reader` / `dev-only-reader-secret` | Client credentials, no scope | Reads succeed, writes return `403` |
-| `scalar` (public) + user `alice` / `alice` | Authorization Code + PKCE, `products:write` / `orders:write` optional | Interactive sign-in from Scalar |
+| `scalar` (public) + user `alice` / `alice` | Authorization Code + PKCE, `products:write` / `orders:write` / `orders:fulfill` optional | Interactive sign-in from Scalar |
 
 ```bash
 TOKEN=$(curl -s http://localhost:8180/realms/clean-architecture/protocol/openid-connect/token \
@@ -211,7 +219,7 @@ curl -i http://localhost:8080/api/products -H "Authorization: Bearer $TOKEN"
 Running just `dotnet run --project src/CleanArchitecture.Presentation` needs no identity provider. Mint a token with the built-in tool (it stores the signing key in user secrets and writes the issuer/audience to `appsettings.Development.json`):
 
 ```bash
-dotnet user-jwts create --project src/CleanArchitecture.Presentation --scope products:write --scope orders:write
+dotnet user-jwts create --project src/CleanArchitecture.Presentation --scope products:write --scope orders:write --scope orders:fulfill
 ```
 
 Omit `--scope` for a read-only token.
@@ -239,8 +247,9 @@ src/
 └── CleanArchitecture.AppHost           # Aspire orchestration
 tests/
 ├── *.UnitTests                         # Layer-focused tests
-├── CleanArchitecture.IntegrationTests  # HTTP end to end against real PostgreSQL
-└── CleanArchitecture.ArchitectureTests # Dependency and convention rules
+├── CleanArchitecture.IntegrationTests  # HTTP end to end against real PostgreSQL + OpenAPI contract snapshot
+├── CleanArchitecture.ArchitectureTests # Dependency and convention rules
+└── load/                               # k6 load test against the Compose stack
 deploy/keycloak/                        # Local Keycloak realm as code (dev only)
 terraform/                              # Azure Container Apps + PostgreSQL
 ```
@@ -264,27 +273,52 @@ dotnet tool restore && dotnet test CleanArchitecture.slnx --coverage --coverage-
 | Gate | Coverage |
 |---|---|
 | Build | Nullable enabled, analyzers, deterministic output, warnings as errors |
-| Tests | **296 tests** across six projects |
+| Tests | Six projects; live count and coverage in the badges above |
+| Coverage | CI fails below 85 % line or 80 % branch coverage |
+| Contract | The OpenAPI document must match [`openapi.v1.approved.json`](tests/CleanArchitecture.IntegrationTests/OpenApi/openapi.v1.approved.json) |
+| Mutation | Stryker.NET on Domain and Application; fails below a 60 % mutation score |
 | Architecture | Layer, handler, repository, command/query, and mediator conventions |
-| CI | Build, test, formatting, Docker build, Terraform format + validation |
-| Supply chain | Vulnerable NuGet package gate (incl. transitive), CodeQL (C# + workflows), weekly grouped Dependabot updates |
+| Performance | k6 load test (error rate and p95 thresholds) on a schedule or on demand |
+| CI | Build, test, formatting, Docker build + Trivy scan, Terraform fmt + validate + tflint + checkov |
+| Supply chain | Vulnerable NuGet package gate (incl. transitive), CodeQL (C# + workflows), signed images with SBOM and provenance, weekly grouped Dependabot updates |
+
+<details>
+<summary><strong>Contract snapshot, mutation and load tests</strong></summary>
+
+```bash
+# Approve an intended OpenAPI change (rewrites openapi.v1.approved.json)
+UPDATE_SNAPSHOTS=1 dotnet test --project tests/CleanArchitecture.IntegrationTests
+
+# Mutation testing (report in StrykerOutput/)
+cd tests/CleanArchitecture.Application.UnitTests
+dotnet stryker --project CleanArchitecture.Domain.csproj
+dotnet stryker --project CleanArchitecture.Application.csproj
+
+# Load test against the Compose stack
+docker compose up --detach --build --wait
+k6 run tests/load/api-load.js
+```
+
+</details>
 
 ## 📦 Delivery
 
 ```mermaid
 flowchart LR
     PR[Pull request] --> CI[GitHub Actions CI]
-    CI --> Tests[Build · tests · format]
-    CI --> ImageCheck[Docker build check]
-    CI --> IaCCheck[Terraform validation]
+    CI --> Tests[Build · tests · coverage · format]
+    CI --> ImageCheck[Docker build + Trivy]
+    CI --> IaCCheck[Terraform validate · tflint · checkov]
+    PR --> Mutation[Stryker mutation tests]
     Main[main] --> Gate[CI gate]
-    Gate --> GHCR[(GHCR image)]
+    Gate --> GHCR[(GHCR image<br/>signed · SBOM · provenance)]
     Operator[Terraform apply] --> ACA[Azure Container Apps]
     GHCR --> ACA
     ACA --> PG[(PostgreSQL Flexible Server)]
     ACA --> Logs[Log Analytics]
 ```
 
-- Pushes to `main` publish SHA and `latest` images to GHCR after CI succeeds.
-- `terraform/` provisions Azure Container Apps, PostgreSQL Flexible Server, and Log Analytics.
+- Pushes to `main` publish SHA and `latest` images to GHCR after CI succeeds. Each image is signed with keyless cosign and carries an SPDX SBOM and SLSA provenance; a CycloneDX SBOM is kept as a workflow artifact and Trivy results go to code scanning.
+- Verify an image: `cosign verify ghcr.io/mbarretot/dotnet-clean-architecture:latest --certificate-identity-regexp 'https://github.com/mbarretot/dotnet-clean-architecture/' --certificate-oidc-issuer https://token.actions.githubusercontent.com`.
+- `terraform/` provisions Azure Container Apps, PostgreSQL Flexible Server, and Log Analytics. Set `cache_connection_string` to give the API a Redis distributed cache.
 - OTLP export is enabled whenever `OTEL_EXPORTER_OTLP_ENDPOINT` is configured.
